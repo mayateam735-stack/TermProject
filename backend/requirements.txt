@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+pydantic==2.10.4
+pydantic-settings==2.7.1
+pandas==2.2.3
+python-dotenv==1.0.1
+
+# Optional — local medical LLM serving (wire up in services/llm.py).
+# Left commented so the project installs and runs without a model present.
+# llama-cpp-python==0.3.5
