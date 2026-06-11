@@ -18,7 +18,7 @@ A three-tier system, mirroring the proposal:
 | --- | --- | --- |
 | Frontend | React PWA (Vite) | [`frontend/`](frontend/) |
 | API / service | Python · FastAPI | [`backend/app/`](backend/app/) |
-| Data + AI | SQLite (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
+| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
 
 ### Core features in this scaffold
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
@@ -43,6 +43,16 @@ copy .env.example .env          # macOS/Linux: cp .env.example .env
 python -m app.seed              # load sample BC clinics
 uvicorn app.main:app --reload   # http://localhost:8000  (docs at /docs)
 ```
+
+#### Database
+The app uses **PostgreSQL hosted on [Neon](https://neon.tech)**. Set the
+connection string in `backend/.env` (never commit this file):
+```
+DATABASE_URL=postgresql://<user>:<password>@<host>/<dbname>?sslmode=require
+```
+Tables are created automatically on startup; run `python -m app.seed` once to
+load the sample clinics. Without a `DATABASE_URL`, the app falls back to a
+local SQLite file (`vhn.db`) — handy for quick experiments.
 
 ### 2. Frontend (React PWA)
 ```bash
