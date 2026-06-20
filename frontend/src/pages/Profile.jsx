@@ -1,4 +1,5 @@
-import { ChevronRight, FileText, HeartPulse, Shield, User } from "lucide-react";
+import { ChevronRight, FileText, HeartPulse, LogOut, Shield, User } from "lucide-react";
+import { useAuth } from "../auth.jsx";
 
 const ITEMS = [
   { Icon: User, title: "Profile basics", sub: "Name, age, conditions" },
@@ -8,10 +9,20 @@ const ITEMS = [
 ];
 
 export default function Profile() {
+  const { user, logout } = useAuth();
+
   return (
     <section>
       <h2 className="page-title">Your profile</h2>
       <p className="page-sub">A private, persistent record of your health.</p>
+
+      <div className="card" style={{ display: "flex", alignItems: "center", gap: "0.9rem" }}>
+        <span className="avatar">{user?.name?.[0]?.toUpperCase() ?? "U"}</span>
+        <div>
+          <div className="med-name">{user?.name}</div>
+          <div className="med-dose">{user?.email}</div>
+        </div>
+      </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {ITEMS.map(({ Icon, title, sub }, i) => (
@@ -39,6 +50,11 @@ export default function Profile() {
           </div>
         ))}
       </div>
+
+      <button className="btn btn-outline" onClick={logout}>
+        <LogOut size={18} style={{ marginRight: "0.4rem", verticalAlign: "-3px" }} />
+        Sign out
+      </button>
 
       <p className="disclaimer" style={{ textAlign: "center" }}>
         Educational student project — not a medical device.

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import Base, engine
-from .routers import locator, profile, reminders, triage
+from .routers import auth, chat, locator, profile, reminders, symptom_checks, triage
 
 
 @asynccontextmanager
@@ -33,7 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(triage.router)
+app.include_router(symptom_checks.router)
+app.include_router(chat.router)
 app.include_router(locator.router)
 app.include_router(reminders.router)
 app.include_router(profile.router)
