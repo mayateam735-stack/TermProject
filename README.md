@@ -21,6 +21,8 @@ A three-tier system, mirroring the proposal:
 | Data + AI | SQLite (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
 
 ### Core features in this scaffold
+- **Account creation, login, and session auth** — cookie-based sessions backed
+  by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
 - **Clinic / pharmacy locator** with estimated wait times and distance sorting.
@@ -55,6 +57,10 @@ The dev server proxies `/api/*` to the backend on port 8000.
 ## API overview
 | Method | Path | Purpose |
 | --- | --- | --- |
+| POST | `/api/auth/signup` | Create an account (sets session cookie) |
+| POST | `/api/auth/login` | Log in (sets session cookie) |
+| POST | `/api/auth/logout` | Log out (clears session cookie) |
+| GET | `/api/auth/me` | Current logged-in patient |
 | POST | `/api/triage` | Symptom checker / ER decision |
 | GET | `/api/clinics` | Locator (`?kind=&lat=&lng=`) |
 | GET/POST/DELETE | `/api/reminders` | Medication reminders |
