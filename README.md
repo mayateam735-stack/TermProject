@@ -18,9 +18,11 @@ A three-tier system, mirroring the proposal:
 | --- | --- | --- |
 | Frontend | React PWA (Vite) | [`frontend/`](frontend/) |
 | API / service | Python · FastAPI | [`backend/app/`](backend/app/) |
-| Data + AI | SQLite (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
+| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
 
 ### Core features in this scaffold
+- **Account creation, login, and session auth** — cookie-based sessions backed
+  by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
 - **Clinic / pharmacy locator** with estimated wait times and distance sorting.
@@ -44,6 +46,23 @@ python -m app.seed              # load sample BC clinics
 uvicorn app.main:app --reload   # http://localhost:8000  (docs at /docs)
 ```
 
+#### Database
+The app uses **PostgreSQL hosted on [Neon](https://neon.tech)**. Set the
+connection string in `backend/.env` (never commit this file):
+```
+DATABASE_URL=postgresql://<user>:<password>@<host>/<dbname>?sslmode=require
+```
+Tables are created automatically on startup; run `python -m app.seed` once to
+load the sample clinics. Without a `DATABASE_URL`, the app falls back to a
+local SQLite file (`vhn.db`) — handy for quick experiments.
+
+> ⚠️ `create_all` only creates **missing tables** — it never adds columns to
+> a table that already exists. If you add a field to a model
+> (`backend/app/models.py`) and an old table is already sitting in your
+> database (local or Neon), you'll get `UndefinedColumn` / 500 errors until
+> you either `ALTER TABLE` to add the column manually or drop and recreate
+> the table.
+
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
@@ -55,6 +74,10 @@ The dev server proxies `/api/*` to the backend on port 8000.
 ## API overview
 | Method | Path | Purpose |
 | --- | --- | --- |
+| POST | `/api/auth/signup` | Create an account (sets session cookie) |
+| POST | `/api/auth/login` | Log in (sets session cookie) |
+| POST | `/api/auth/logout` | Log out (clears session cookie) |
+| GET | `/api/auth/me` | Current logged-in patient |
 | POST | `/api/triage` | Symptom checker / ER decision |
 | GET | `/api/clinics` | Locator (`?kind=&lat=&lng=`) |
 | GET/POST/DELETE | `/api/reminders` | Medication reminders |
