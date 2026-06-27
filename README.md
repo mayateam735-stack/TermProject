@@ -56,6 +56,13 @@ Tables are created automatically on startup; run `python -m app.seed` once to
 load the sample clinics. Without a `DATABASE_URL`, the app falls back to a
 local SQLite file (`vhn.db`) — handy for quick experiments.
 
+> ⚠️ `create_all` only creates **missing tables** — it never adds columns to
+> a table that already exists. If you add a field to a model
+> (`backend/app/models.py`) and an old table is already sitting in your
+> database (local or Neon), you'll get `UndefinedColumn` / 500 errors until
+> you either `ALTER TABLE` to add the column manually or drop and recreate
+> the table.
+
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
