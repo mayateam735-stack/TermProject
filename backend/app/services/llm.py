@@ -32,9 +32,14 @@ def _load_model():
         return None
 
 
-def generate_guidance(symptom_text: str, age: int | None = None) -> TriageResult:
+def generate_guidance(
+    symptom_text: str,
+    age: int | None = None,
+    pain_level: int = 0,
+    duration: str | None = None,
+) -> TriageResult:
     """Produce triage guidance, preferring the LLM but never below the safety floor."""
-    safety_floor = triage_engine.assess(symptom_text, age)
+    safety_floor = triage_engine.assess(symptom_text, age, pain_level, duration)
 
     model = _load_model()
     if model is None:

@@ -1,9 +1,9 @@
 """Pydantic request/response schemas."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ---- Triage ----------------------------------------------------------------
@@ -11,6 +11,19 @@ class TriageRequest(BaseModel):
     patient_id: int | None = None
     symptom_text: str = Field(min_length=1, max_length=2000)
     age: int | None = Field(default=None, ge=0, le=120)
+    pain_level: int = Field(default=0, ge=0, le=10)
+    duration: str | None = Field(default=None, max_length=40)
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    urgency: str | None  # set when the message was triaged; None for small talk
+    disclaimer: str
+    source: str
 
 
 class TriageResponse(BaseModel):
@@ -23,12 +36,26 @@ class TriageResponse(BaseModel):
     source: str  # "rule-based" | "llm" — transparency about how guidance was produced
 
 
-# ---- Profile ---------------------------------------------------------------
-class PatientCreate(BaseModel):
+# ---- Auth / Profile --------------------------------------------------------
+class SignupRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
     age: int | None = Field(default=None, ge=0, le=120)
-    sex: str | None = None
-    conditions: str | None = None
+    sex: str | None = Field(default=None, max_length=20)
+    conditions: str | None = Field(default=None, max_length=2000)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PatientUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: str | None = Field(default=None, max_length=20)
+    conditions: str | None = Field(default=None, max_length=2000)
 
 
 class PatientOut(BaseModel):
@@ -36,6 +63,7 @@ class PatientOut(BaseModel):
 
     id: int
     name: str
+    email: EmailStr
     age: int | None
     sex: str | None
     conditions: str | None
@@ -55,10 +83,13 @@ class SymptomCheckOut(BaseModel):
 
 # ---- Reminders -------------------------------------------------------------
 class ReminderCreate(BaseModel):
-    patient_id: int | None = None
     medication: str = Field(min_length=1, max_length=120)
     dosage: str | None = None
     time_of_day: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")  # HH:MM
+
+
+class ReminderTakenUpdate(BaseModel):
+    taken: bool
 
 
 class ReminderOut(BaseModel):
@@ -69,6 +100,7 @@ class ReminderOut(BaseModel):
     dosage: str | None
     time_of_day: str
     active: int
+    last_taken_date: date | None
     created_at: datetime
 
 

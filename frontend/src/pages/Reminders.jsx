@@ -10,9 +10,13 @@ function fmt(t) {
   return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function Reminders() {
   const [reminders, setReminders] = useState([]);
-  const [taken, setTaken] = useState({}); // local "taken today" state
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ medication: "", dosage: "", time_of_day: "08:00" });
   const [error, setError] = useState(null);
@@ -38,6 +42,15 @@ export default function Reminders() {
   async function remove(id) {
     await api.deleteReminder(id);
     load();
+  }
+
+  async function toggleTaken(r, done) {
+    try {
+      await api.setReminderTaken(r.id, !done);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
@@ -68,12 +81,12 @@ export default function Reminders() {
       )}
 
       {reminders.map((r) => {
-        const done = !!taken[r.id];
+        const done = r.last_taken_date === todayStr();
         return (
           <div className={`card med-card ${done ? "done" : ""}`} key={r.id}>
             <button
               className={`check ${done ? "done" : ""}`}
-              onClick={() => setTaken((t) => ({ ...t, [r.id]: !t[r.id] }))}
+              onClick={() => toggleTaken(r, done)}
               aria-label={done ? "Mark not taken" : "Mark taken"}
             >
               {done && <Check size={18} />}

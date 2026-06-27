@@ -1,9 +1,9 @@
 """SQLAlchemy ORM models for profiles, history, reminders, and clinics."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -18,6 +18,8 @@ class Patient(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sex: Mapped[str | None] = mapped_column(String(20), nullable=True)
     conditions: Mapped[str | None] = mapped_column(Text, nullable=True)  # free text / comma list
@@ -29,6 +31,25 @@ class Patient(Base):
     reminders: Mapped[list["Reminder"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
+    sessions: Mapped[list["Session"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+
+
+class Session(Base):
+    """Server-side session — the auth state lives in the DB, not the browser.
+
+    The client only holds an opaque, HTTP-only cookie carrying `token`.
+    """
+
+    __tablename__ = "sessions"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+    patient: Mapped["Patient"] = relationship(back_populates="sessions")
 
 
 class SymptomCheck(Base):
@@ -60,6 +81,8 @@ class Reminder(Base):
     dosage: Mapped[str | None] = mapped_column(String(120), nullable=True)
     time_of_day: Mapped[str] = mapped_column(String(20))  # e.g. "08:00"
     active: Mapped[int] = mapped_column(Integer, default=1)
+    # Date the dose was last marked taken; "taken today" == this equals today.
+    last_taken_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     patient: Mapped["Patient"] = relationship(back_populates="reminders")

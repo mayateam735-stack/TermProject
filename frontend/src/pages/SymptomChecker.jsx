@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Calendar, Flame, Mic, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar, Flame, Mic, Send } from "lucide-react";
 import { api } from "../api.js";
 
 const QUICK = ["Fever", "Cough", "Headache", "Nausea", "Fatigue", "Dizziness"];
@@ -21,6 +22,7 @@ export default function SymptomChecker() {
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
+  const navigate = useNavigate();
 
   function toggle(symptom) {
     setSelected((s) =>
@@ -29,12 +31,12 @@ export default function SymptomChecker() {
   }
 
   function composeText() {
+    // Tags + free text feed keyword matching / the LLM. Pain and duration are
+    // sent as structured fields so the engine can score them numerically.
     const parts = [];
     if (selected.length) parts.push(selected.join(", ").toLowerCase());
     if (details.trim()) parts.push(details.trim());
-    let text = parts.join(". ");
-    text += `. Pain level ${pain}/10. Duration: ${duration}.`;
-    return text.trim();
+    return parts.join(". ").trim();
   }
 
   function toggleVoice() {
@@ -70,7 +72,11 @@ export default function SymptomChecker() {
     setError(null);
     setResult(null);
     try {
-      const data = await api.triage(composeText());
+      const data = await api.triage({
+        symptom_text: composeText(),
+        pain_level: pain,
+        duration,
+      });
       setResult(data);
     } catch (err) {
       setError(err.message);
@@ -81,6 +87,9 @@ export default function SymptomChecker() {
 
   return (
     <section>
+      <button className="back-link" onClick={() => navigate("/home")}>
+        <ArrowLeft size={16} /> Home
+      </button>
       <h2 className="page-title">Symptom check</h2>
       <p className="page-sub">Describe how you feel — we'll suggest the right level of care, never a diagnosis.</p>
 
