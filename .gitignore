@@ -13,9 +13,9 @@ dist-ssr/
 *.local
 
 # Editor / OS
+*.code-workspace
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 .claude/
-TermProject.code-workspace
