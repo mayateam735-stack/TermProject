@@ -42,6 +42,9 @@ def signup(body: SignupRequest, response: Response, db: DbSession = Depends(get_
         name=body.name,
         email=body.email,
         password_hash=hash_password(body.password),
+        age=body.age,
+        sex=body.sex,
+        conditions=body.conditions,
     )
     db.add(patient)
     db.commit()

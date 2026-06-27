@@ -41,11 +41,21 @@ class SignupRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: str | None = Field(default=None, max_length=20)
+    conditions: str | None = Field(default=None, max_length=2000)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class PatientUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: str | None = Field(default=None, max_length=20)
+    conditions: str | None = Field(default=None, max_length=2000)
 
 
 class PatientOut(BaseModel):

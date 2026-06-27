@@ -481,6 +481,15 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
   font-size: 0.95rem; font-family: inherit; background: #fbfcfe;
 }
 .auth-card input:focus { outline: none; border-color: var(--primary); background: #fff; }
+.auth-card textarea {
+  width: 100%; padding: 0.75rem 0.85rem; border: 1px solid var(--line);
+  border-radius: 12px; font-size: 0.95rem; font-family: inherit; background: #fbfcfe;
+  resize: vertical;
+}
+.auth-card textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
+.auth-card .field { margin-top: 0; background: #fbfcfe; }
+.field-row { display: flex; gap: 0.75rem; }
+.field-row > div { flex: 1; display: flex; flex-direction: column; }
 .auth-card .btn { margin-top: 1.25rem; }
 .auth-error {
   color: var(--emergency); font-size: 0.82rem; margin: 0.85rem 0 0;
@@ -499,6 +508,32 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 .btn.btn-outline {
   background: #fff; color: var(--emergency);
   border: 1px solid #fecaca; box-shadow: none; margin-top: 0.5rem;
+}
+
+/* tappable settings rows + inline expander */
+.settings-row {
+  width: 100%; background: none; border: none; cursor: pointer;
+  padding: 1rem 1.1rem; font: inherit;
+}
+.settings-row:active { background: var(--primary-soft); }
+.settings-icon {
+  width: 38px; height: 38px; border-radius: 12px; flex: 0 0 auto;
+  display: grid; place-items: center; background: var(--primary-soft); color: var(--primary);
+}
+.expander {
+  padding: 0 1.1rem 1.1rem;
+  animation: expand-in 0.18s ease;
+}
+.expander.form-grid { display: grid; gap: 0.6rem; }
+.expander input, .expander textarea, .expander select {
+  width: 100%; padding: 0.7rem 0.8rem; border: 1px solid var(--line);
+  border-radius: 12px; font-size: 0.9rem; font-family: inherit; background: #fbfcfe;
+}
+.expander input:focus, .expander textarea:focus { outline: none; border-color: var(--primary); }
+@keyframes expand-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.note {
+  color: var(--primary-dark); background: var(--primary-soft);
+  border: none; font-size: 0.85rem; font-weight: 600; text-align: center;
 }
 
 .form-grid { display: grid; gap: 0.6rem; }

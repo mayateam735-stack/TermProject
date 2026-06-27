@@ -7,17 +7,28 @@ import PulseLine from "../components/PulseLine.jsx";
 export default function SignUp() {
   const { signup } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", age: "", sex: "", conditions: "",
+  });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await signup(form);
-      navigate("/triage", { replace: true });
+      await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        age: form.age ? Number(form.age) : null,
+        sex: form.sex || null,
+        conditions: form.conditions.trim() || null,
+      });
+      navigate("/home", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,18 +47,36 @@ export default function SignUp() {
         <form className="auth-card" onSubmit={submit}>
           <label htmlFor="name">Full name</label>
           <input id="name" autoComplete="name" value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Jordan Lee" required />
+            onChange={set("name")} placeholder="Jordan Lee" required />
 
           <label htmlFor="email">Email</label>
           <input id="email" type="email" autoComplete="email" value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="you@example.com" required />
+            onChange={set("email")} placeholder="you@example.com" required />
 
           <label htmlFor="password">Password</label>
           <input id="password" type="password" autoComplete="new-password" value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="At least 8 characters" minLength={8} required />
+            onChange={set("password")} placeholder="At least 8 characters" minLength={8} required />
+
+          <div className="field-row">
+            <div>
+              <label htmlFor="age">Age</label>
+              <input id="age" type="number" min="0" max="120" value={form.age}
+                onChange={set("age")} placeholder="e.g. 34" required />
+            </div>
+            <div>
+              <label htmlFor="sex">Sex</label>
+              <select id="sex" className="field" value={form.sex} onChange={set("sex")}>
+                <option value="">Prefer not to say</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <label htmlFor="conditions">Existing conditions</label>
+          <textarea id="conditions" value={form.conditions} onChange={set("conditions")}
+            placeholder="e.g. asthma, high blood pressure — or “none”" rows={2} />
 
           {error && <p className="auth-error">{error}</p>}
 

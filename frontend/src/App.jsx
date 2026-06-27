@@ -6,6 +6,7 @@ import SymptomChecker from "./pages/SymptomChecker.jsx";
 import Locator from "./pages/Locator.jsx";
 import Reminders from "./pages/Reminders.jsx";
 import Profile from "./pages/Profile.jsx";
+import History from "./pages/History.jsx";
 import Chat from "./pages/Chat.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import SignIn from "./pages/SignIn.jsx";
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/nearby" element={<Locator />} />
           <Route path="/meds" element={<Reminders />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/history" element={<History />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>

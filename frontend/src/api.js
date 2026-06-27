@@ -63,4 +63,8 @@ export const api = {
 
   chat: (message) =>
     request("/api/chat", { method: "POST", body: JSON.stringify({ message }) }),
+
+  updateMe: (body) =>
+    request("/api/patients/me", { method: "PATCH", body: JSON.stringify(body) }),
+  history: (limit = 50) => request(`/api/symptom-checks?limit=${limit}`),
 };
