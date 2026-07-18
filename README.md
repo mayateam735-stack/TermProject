@@ -28,6 +28,9 @@ A three-tier system, mirroring the proposal:
 - **Clinic / pharmacy locator** with estimated wait times and distance sorting.
 - **Medication reminders** (create / list / delete).
 - **Private health history** — every symptom check is persisted per patient.
+- **Health AI chat** — conversational front-end over the same safety-bounded
+  triage logic; small talk gets a friendly reply, symptom descriptions get
+  guidance ([`chat.py`](backend/app/routers/chat.py)).
 - **LLM integration point** for OpenBioLLM-8B + RAG, stubbed so the app runs
   without a model ([`llm.py`](backend/app/services/llm.py)). The rule-based
   engine acts as a permanent safety floor the model can never downgrade.
