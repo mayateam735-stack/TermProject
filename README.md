@@ -18,22 +18,28 @@ A three-tier system, mirroring the proposal:
 | --- | --- | --- |
 | Frontend | React PWA (Vite) | [`frontend/`](frontend/) |
 | API / service | Python · FastAPI | [`backend/app/`](backend/app/) |
-| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
+| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · OpenBioLLM-8B (hosted) | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
 
 ### Core features in this scaffold
 - **Account creation, login, and session auth** — cookie-based sessions backed
   by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
-- **Clinic / pharmacy locator** with estimated wait times and distance sorting.
+- **Clinic / pharmacy locator** with estimated wait times ([`wait_times.py`](backend/app/services/wait_times.py))
+  and distance sorting.
 - **Medication reminders** (create / list / delete).
 - **Private health history** — every symptom check is persisted per patient.
 - **Health AI chat** — conversational front-end over the same safety-bounded
   triage logic; small talk gets a friendly reply, symptom descriptions get
   guidance ([`chat.py`](backend/app/routers/chat.py)).
-- **LLM integration point** for OpenBioLLM-8B + RAG, stubbed so the app runs
-  without a model ([`llm.py`](backend/app/services/llm.py)). The rule-based
-  engine acts as a permanent safety floor the model can never downgrade.
+- **OpenBioLLM-8B** wired up via Hugging Face's hosted Inference API
+  ([`llm.py`](backend/app/services/llm.py), `LLM_BACKEND=hf_api`) — the model
+  rewords self-care guidance in plain language, but the rule-based triage
+  engine is a permanent safety floor the model can never downgrade
+  (emergencies always bypass the model). Local backends (`transformers`,
+  `llamacpp`) are also supported for offline/GPU setups.
+- **Doctor dashboard** — doctors can view their assigned patients and
+  symptom-check history ([`doctor.py`](backend/app/routers/doctor.py)).
 
 ## Running it
 
@@ -66,6 +72,18 @@ local SQLite file (`vhn.db`) — handy for quick experiments.
 > you either `ALTER TABLE` to add the column manually or drop and recreate
 > the table.
 
+#### Enabling OpenBioLLM
+By default (`LLM_BACKEND=` empty) the app runs on the rule-based triage engine
+only. To turn on real OpenBioLLM-8B guidance, set in `backend/.env`:
+```
+LLM_BACKEND=hf_api
+HF_TOKEN=<your token from https://huggingface.co/settings/tokens>
+```
+Check `GET /api/ai/status` to confirm which engine is active. The hosted
+Featherless provider can return a cold-start `503` on the first request; the
+app retries a few times before falling back to the rule engine, so guidance
+always comes back either way.
+
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
@@ -89,6 +107,11 @@ The dev server proxies `/api/*` to the backend on port 8000.
 | PATCH | `/api/reminders/{id}/taken` | Mark a dose taken today |
 | GET/PATCH | `/api/patients/me` | View / update profile |
 | GET | `/api/patients/me/history` | Full symptom-check history |
+| GET | `/api/doctors` | List doctors patients can choose from |
+| GET | `/api/doctor/patients` | Doctor's assigned patients |
+| GET | `/api/doctor/patients/{id}` | A specific patient's profile (doctor view) |
+| GET | `/api/doctor/patients/{id}/history` | A specific patient's symptom-check history |
+| GET | `/api/ai/status` | Which AI engine (rule-based or OpenBioLLM) is currently active |
 | GET | `/api/health` | Health check |
 
 Interactive docs: <http://localhost:8000/docs>
@@ -105,7 +128,7 @@ Interactive docs: <http://localhost:8000/docs>
 | [SKILLS.md](SKILLS.md) | Capabilities & specialized workflows |
 
 ## Roadmap (from the proposal)
-- Wire up OpenBioLLM-8B via `llama-cpp-python` + RAG over trusted sources.
-- Doctor / clinic portal and patient roster (multi-sided routing tier).
+- RAG over trusted medical sources to ground OpenBioLLM's guidance further.
+- Clinic-side live queue integration (wait times are currently estimated, not live).
 - AI summary, voice input, PDF export, wearable integration.
 - Integration with B.C.'s Health Connect Registry and live clinic queues.
