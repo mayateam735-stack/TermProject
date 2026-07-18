@@ -25,8 +25,10 @@ A three-tier system, mirroring the proposal:
   by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
-- **Clinic / pharmacy locator** with estimated wait times ([`wait_times.py`](backend/app/services/wait_times.py))
-  and distance sorting.
+- **Clinic / pharmacy locator** with live ED/urgent-care wait times from
+  [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py))
+  and distance sorting. Falls back to the seeded clinic list if the feed is
+  unreachable.
 - **Medication reminders** (create / list / delete).
 - **Private health history** — every symptom check is persisted per patient.
 - **Health AI chat** — conversational front-end over the same safety-bounded
@@ -129,6 +131,5 @@ Interactive docs: <http://localhost:8000/docs>
 
 ## Roadmap (from the proposal)
 - RAG over trusted medical sources to ground OpenBioLLM's guidance further.
-- Clinic-side live queue integration (wait times are currently estimated, not live).
 - AI summary, voice input, PDF export, wearable integration.
-- Integration with B.C.'s Health Connect Registry and live clinic queues.
+- Integration with B.C.'s Health Connect Registry.
