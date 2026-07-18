@@ -8,7 +8,18 @@ email-validator==2.2.0
 pandas==2.2.3
 python-dotenv==1.0.1
 psycopg2-binary==2.9.10
+huggingface_hub==1.23.0   # hosted OpenBioLLM via HF Inference API (needs >=0.28 for providers)
 
-# Optional — local medical LLM serving (wire up in services/llm.py).
-# Left commented so the project installs and runs without a model present.
+# Optional — OpenBioLLM backends (wire up in services/llm.py). Left commented so
+# the project installs and runs without a model. Use the 8B, not the 70B.
+#
+# Transformers backend (LLM_BACKEND=transformers) — GPU strongly recommended:
+# transformers==4.46.3
+# torch==2.5.1
+# accelerate==1.2.1
+# bitsandbytes==0.45.0        # 4-bit quantization (Linux/WSL + CUDA)
+# sentencepiece==0.2.0
+#
+# llama-cpp GGUF backend (LLM_BACKEND=llamacpp) — lighter, runs on CPU:
 # llama-cpp-python==0.3.5
+# huggingface_hub==0.27.0     # to download the GGUF quant

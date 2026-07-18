@@ -12,6 +12,12 @@ const URGENCY_LABELS = {
   self_care: "Self-care",
 };
 
+export const SOURCE_LABELS = {
+  llm: "Reviewed by OpenBioLLM",
+  "rule-based": "Safety-rules engine",
+  assistant: "HealthNav",
+};
+
 export default function SymptomChecker() {
   const [selected, setSelected] = useState([]);
   const [pain, setPain] = useState(0);
@@ -168,6 +174,7 @@ export default function SymptomChecker() {
             <p className="muted"><strong>Why:</strong> {result.red_flags.join(", ")}</p>
           )}
           <p style={{ color: "var(--ink)", fontWeight: 600 }}>→ {result.recommended_action}</p>
+          <p className="muted" style={{ fontSize: "0.78rem" }}>🧠 {SOURCE_LABELS[result.source] ?? result.source}</p>
           <p className="disclaimer">{result.disclaimer}</p>
         </div>
       )}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bot, Send } from "lucide-react";
 import { api } from "../api.js";
+import { SOURCE_LABELS } from "./SymptomChecker.jsx";
 
 const INTRO = {
   role: "assistant",
@@ -10,30 +11,52 @@ const INTRO = {
 
 export default function Chat() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState([INTRO]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [engine, setEngine] = useState(null);
   const endRef = useRef(null);
+  const seededRef = useRef(false);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
-  async function send(e) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || busy) return;
-    setMessages((m) => [...m, { role: "user", text }]);
+  useEffect(() => {
+    api.aiStatus().then(setEngine).catch(() => setEngine(null));
+  }, []);
+
+  // Started from a Recent-activity tap: auto-send that symptom as the first message.
+  useEffect(() => {
+    const seed = location.state?.seed;
+    if (seed && !seededRef.current) {
+      seededRef.current = true;
+      sendMessage(seed);
+      navigate(".", { replace: true, state: null }); // clear so reload won't resend
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function sendMessage(text) {
+    const msg = (text ?? "").trim();
+    if (!msg || busy) return;
+    setMessages((m) => [...m, { role: "user", text: msg }]);
     setInput("");
     setBusy(true);
     try {
-      const res = await api.chat(text);
-      setMessages((m) => [...m, { role: "assistant", text: res.reply, urgency: res.urgency }]);
+      const res = await api.chat(msg);
+      setMessages((m) => [...m, { role: "assistant", text: res.reply, urgency: res.urgency, source: res.source }]);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", text: `Sorry — ${err.message}`, error: true }]);
     } finally {
       setBusy(false);
     }
+  }
+
+  function send(e) {
+    e.preventDefault();
+    sendMessage(input);
   }
 
   return (
@@ -46,14 +69,21 @@ export default function Chat() {
         <span className="chat-avatar"><Bot size={20} /></span>
         <div>
           <div className="med-name">Health AI</div>
-          <div className="med-dose">Safety-first guidance</div>
+          <div className="med-dose">
+            Safety-first guidance{engine ? ` · ${engine.label}` : ""}
+          </div>
         </div>
       </div>
 
       <div className="chat-thread">
         {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.role} ${m.urgency === "emergency" ? "alert" : ""}`}>
-            {m.text}
+          <div key={i} style={{ display: "flex", flexDirection: "column" }}>
+            <div className={`bubble ${m.role} ${m.urgency === "emergency" ? "alert" : ""}`}>
+              {m.text}
+            </div>
+            {m.role === "assistant" && m.source && (
+              <span className="bubble-source">🧠 {SOURCE_LABELS[m.source] ?? m.source}</span>
+            )}
           </div>
         ))}
         {busy && (

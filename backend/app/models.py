@@ -23,6 +23,15 @@ class Patient(Base):
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sex: Mapped[str | None] = mapped_column(String(20), nullable=True)
     conditions: Mapped[str | None] = mapped_column(Text, nullable=True)  # free text / comma list
+    role: Mapped[str] = mapped_column(String(10), default="patient", server_default="patient")  # patient | doctor
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("patients.id"), nullable=True)  # patient's chosen doctor
+    theme: Mapped[str] = mapped_column(String(10), default="light", server_default="light")
+    # Optional health-profile details (used for more personalized guidance).
+    height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    activity_level: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1-4
+    avatar: Mapped[str | None] = mapped_column(String(20), nullable=True)  # preset key
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     history: Mapped[list["SymptomCheck"]] = relationship(

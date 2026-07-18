@@ -1,6 +1,7 @@
 """VHN FastAPI application entry point."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,14 +9,38 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import Base, engine
-from .routers import auth, chat, locator, profile, reminders, symptom_checks, triage
+from .routers import (
+    auth, chat, directory, doctor, locator, profile, reminders, symptom_checks, triage,
+)
+from .services import llm
+
+# How often to ping the hosted model so the provider keeps it loaded (warm).
+_KEEP_WARM_SECONDS = 240
+
+
+async def _keep_warm_loop() -> None:
+    """Periodically warm the hosted LLM so demo requests don't hit cold-start 503s."""
+    while True:
+        try:
+            await asyncio.to_thread(llm.warm)  # blocking HF call off the event loop
+        except Exception:
+            pass
+        await asyncio.sleep(_KEEP_WARM_SECONDS)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup (use Alembic migrations for production).
     Base.metadata.create_all(bind=engine)
+
+    warm_task = None
+    if settings.llm_backend.strip().lower() == "hf_api" and settings.hf_token:
+        warm_task = asyncio.create_task(_keep_warm_loop())
+
     yield
+
+    if warm_task:
+        warm_task.cancel()
 
 
 app = FastAPI(
@@ -40,8 +65,16 @@ app.include_router(chat.router)
 app.include_router(locator.router)
 app.include_router(reminders.router)
 app.include_router(profile.router)
+app.include_router(directory.router)
+app.include_router(doctor.router)
 
 
 @app.get("/api/health", tags=["meta"])
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "virtual-health-navigator"}
+
+
+@app.get("/api/ai/status", tags=["meta"])
+def ai_status() -> dict:
+    """Which AI engine backs the symptom checker and chat right now."""
+    return llm.status()

@@ -11,7 +11,7 @@ const HELP_TILES = [
   { label: "Find Care Nearby", Icon: MapPin, to: "/nearby" },
   { label: "My Medications", Icon: Pill, to: "/meds" },
   { label: "Health Profile", Icon: User, to: "/profile" },
-  { label: "Call HealthLink 8-1-1", Icon: Phone, href: "tel:811", variant: "accent" },
+  { label: "Call HealthLink 811", Icon: Phone, href: "tel:811", variant: "accent" },
   { label: "Emergency 911", Icon: Siren, href: "tel:911", variant: "danger" },
 ];
 
@@ -142,14 +142,19 @@ export default function Home() {
         checks.map((c) => {
           const outcome = OUTCOME_STYLES[URGENCY_TO_OUTCOME[c.urgency]] ?? OUTCOME_STYLES.soon;
           return (
-            <div className="card activity-row" key={c.id}>
+            <button
+              className="card activity-row"
+              key={c.id}
+              onClick={() => navigate("/chat", { state: { seed: c.symptom_text } })}
+              title="Continue this in Health AI chat"
+            >
               <span className="mini-icon"><Activity size={16} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="activity-text">{c.symptom_text}</div>
                 <div className="med-dose">{timeAgo(c.created_at)}</div>
               </div>
               <span className={`badge ${outcome.cls}`}>{outcome.label}</span>
-            </div>
+            </button>
           );
         })
       )}

@@ -1,7 +1,7 @@
 """Patient profile and private health history (scoped to the signed-in user)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,12 @@ def update_me(
     db: Session = Depends(get_db),
     current: Patient = Depends(get_current_user),
 ) -> Patient:
-    for field, value in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    if data.get("doctor_id") is not None:
+        doctor = db.get(Patient, data["doctor_id"])
+        if doctor is None or doctor.role != "doctor":
+            raise HTTPException(status_code=400, detail="Selected doctor not found")
+    for field, value in data.items():
         setattr(current, field, value)
     db.commit()
     db.refresh(current)

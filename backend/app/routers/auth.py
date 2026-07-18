@@ -42,6 +42,7 @@ def signup(body: SignupRequest, response: Response, db: DbSession = Depends(get_
         name=body.name,
         email=body.email,
         password_hash=hash_password(body.password),
+        role=body.role,
         age=body.age,
         sex=body.sex,
         conditions=body.conditions,
