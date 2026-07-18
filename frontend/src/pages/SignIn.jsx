@@ -17,7 +17,7 @@ export default function SignIn() {
     setError(null);
     try {
       await login(form);
-      navigate("/triage", { replace: true });
+      navigate("/home", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

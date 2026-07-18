@@ -536,6 +536,10 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
   border: none; font-size: 0.85rem; font-weight: 600; text-align: center;
 }
 
+.profile-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; }
+.profile-row dt { color: var(--muted); font-size: 0.85rem; }
+.profile-row dd { margin: 0; font-weight: 600; text-align: right; }
+
 .form-grid { display: grid; gap: 0.6rem; }
 .form-grid input {
   width: 100%; padding: 0.7rem 0.8rem; border-radius: 12px;
