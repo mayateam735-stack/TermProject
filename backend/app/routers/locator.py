@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Clinic
 from ..schemas import ClinicOut
+from ..services import wait_times
 
 router = APIRouter(prefix="/api/clinics", tags=["locator"])
 
@@ -22,6 +23,14 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return round(2 * r * asin(sqrt(a)), 2)
 
 
+def _seeded_out(c: Clinic) -> ClinicOut:
+    return ClinicOut(
+        id=str(c.id), name=c.name, kind=c.kind, address=c.address,
+        latitude=c.latitude, longitude=c.longitude, open_hours=c.open_hours,
+        estimated_wait_min=c.estimated_wait_min, source="seed",
+    )
+
+
 @router.get("", response_model=list[ClinicOut])
 def list_clinics(
     db: Session = Depends(get_db),
@@ -29,19 +38,24 @@ def list_clinics(
     lat: float | None = Query(default=None),
     lng: float | None = Query(default=None),
 ) -> list[ClinicOut]:
-    stmt = select(Clinic)
+    live = wait_times.get_live_facilities()
+
+    results: list[ClinicOut] = []
+    if live:
+        # Live EDs / urgent care (with real wait times) + seeded pharmacies
+        # (the feed doesn't cover pharmacies).
+        results.extend(ClinicOut(**f) for f in live)
+        pharmacies = db.scalars(select(Clinic).where(Clinic.kind == "pharmacy")).all()
+        results.extend(_seeded_out(c) for c in pharmacies)
+    else:
+        # Feed unavailable — fall back entirely to seeded clinics.
+        results.extend(_seeded_out(c) for c in db.scalars(select(Clinic)).all())
+
     if kind:
-        stmt = stmt.where(Clinic.kind == kind)
-    clinics = db.scalars(stmt).all()
+        results = [c for c in results if c.kind == kind]
 
-    results = []
-    for c in clinics:
-        out = ClinicOut.model_validate(c)
-        if lat is not None and lng is not None:
-            out.distance_km = _haversine_km(lat, lng, c.latitude, c.longitude)
-        results.append(out)
-
-    # Nearest first when a location is provided.
     if lat is not None and lng is not None:
+        for c in results:
+            c.distance_km = _haversine_km(lat, lng, c.latitude, c.longitude)
         results.sort(key=lambda c: (c.distance_km if c.distance_km is not None else 1e9))
     return results

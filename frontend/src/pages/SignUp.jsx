@@ -10,10 +10,12 @@ export default function SignUp() {
   const [form, setForm] = useState({
     name: "", email: "", password: "", age: "", sex: "", conditions: "",
   });
+  const [role, setRole] = useState("patient");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const isDoctor = role === "doctor";
 
   async function submit(e) {
     e.preventDefault();
@@ -24,11 +26,12 @@ export default function SignUp() {
         name: form.name,
         email: form.email,
         password: form.password,
-        age: form.age ? Number(form.age) : null,
-        sex: form.sex || null,
-        conditions: form.conditions.trim() || null,
+        role,
+        age: isDoctor || !form.age ? null : Number(form.age),
+        sex: isDoctor ? null : form.sex || null,
+        conditions: isDoctor ? null : form.conditions.trim() || null,
       });
-      navigate("/home", { replace: true });
+      navigate(isDoctor ? "/doctor" : "/home", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -45,7 +48,16 @@ export default function SignUp() {
         <p className="auth-sub">Your private health navigator — guidance, not diagnosis.</p>
 
         <form className="auth-card" onSubmit={submit}>
-          <label htmlFor="name">Full name</label>
+          <div className="role-toggle">
+            <button type="button" className={role === "patient" ? "on" : ""} onClick={() => setRole("patient")}>
+              I'm a patient
+            </button>
+            <button type="button" className={role === "doctor" ? "on" : ""} onClick={() => setRole("doctor")}>
+              I'm a doctor
+            </button>
+          </div>
+
+          <label htmlFor="name">{isDoctor ? "Full name" : "Full name"}</label>
           <input id="name" autoComplete="name" value={form.name}
             onChange={set("name")} placeholder="Jordan Lee" required />
 
@@ -57,26 +69,30 @@ export default function SignUp() {
           <input id="password" type="password" autoComplete="new-password" value={form.password}
             onChange={set("password")} placeholder="At least 8 characters" minLength={8} required />
 
-          <div className="field-row">
-            <div>
-              <label htmlFor="age">Age</label>
-              <input id="age" type="number" min="0" max="120" value={form.age}
-                onChange={set("age")} placeholder="e.g. 34" required />
-            </div>
-            <div>
-              <label htmlFor="sex">Sex</label>
-              <select id="sex" className="field" value={form.sex} onChange={set("sex")}>
-                <option value="">Prefer not to say</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
+          {!isDoctor && (
+            <>
+              <div className="field-row">
+                <div>
+                  <label htmlFor="age">Age</label>
+                  <input id="age" type="number" min="0" max="120" value={form.age}
+                    onChange={set("age")} placeholder="e.g. 34" required />
+                </div>
+                <div>
+                  <label htmlFor="sex">Sex</label>
+                  <select id="sex" className="field" value={form.sex} onChange={set("sex")}>
+                    <option value="">Prefer not to say</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
 
-          <label htmlFor="conditions">Existing conditions</label>
-          <textarea id="conditions" value={form.conditions} onChange={set("conditions")}
-            placeholder="e.g. asthma, high blood pressure — or “none”" rows={2} />
+              <label htmlFor="conditions">Existing conditions</label>
+              <textarea id="conditions" value={form.conditions} onChange={set("conditions")}
+                placeholder="e.g. asthma, high blood pressure — or “none”" rows={2} />
+            </>
+          )}
 
           {error && <p className="auth-error">{error}</p>}
 

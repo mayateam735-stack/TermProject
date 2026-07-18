@@ -79,12 +79,27 @@ The dev server proxies `/api/*` to the backend on port 8000.
 | POST | `/api/auth/logout` | Log out (clears session cookie) |
 | GET | `/api/auth/me` | Current logged-in patient |
 | POST | `/api/triage` | Symptom checker / ER decision |
+| GET | `/api/symptom-checks` | Recent checks for the logged-in patient |
+| POST | `/api/chat` | Conversational Health AI (same safety floor) |
 | GET | `/api/clinics` | Locator (`?kind=&lat=&lng=`) |
 | GET/POST/DELETE | `/api/reminders` | Medication reminders |
-| POST/GET | `/api/patients`, `/api/patients/{id}/history` | Profile & history |
+| PATCH | `/api/reminders/{id}/taken` | Mark a dose taken today |
+| GET/PATCH | `/api/patients/me` | View / update profile |
+| GET | `/api/patients/me/history` | Full symptom-check history |
 | GET | `/api/health` | Health check |
 
 Interactive docs: <http://localhost:8000/docs>
+
+## Project documentation
+| File | Purpose |
+| --- | --- |
+| [README.md](README.md) | Project overview, setup, API |
+| [AGENTS.md](AGENTS.md) | Instructions & workflows for AI agents |
+| [CLAUDE.md](CLAUDE.md) | Vendor-specific guidance for Claude / Claude Code |
+| [DESIGN.md](DESIGN.md) | UI/UX guidelines — layout, colors, components |
+| [MEMORY.md](MEMORY.md) | Long-term project context & decisions |
+| [TASKS.md](TASKS.md) | Task list & progress tracking |
+| [SKILLS.md](SKILLS.md) | Capabilities & specialized workflows |
 
 ## Roadmap (from the proposal)
 - Wire up OpenBioLLM-8B via `llama-cpp-python` + RAG over trusted sources.

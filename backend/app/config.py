@@ -10,7 +10,16 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./vhn.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    # Empty path => the LLM service falls back to the rule-based stub.
+    # LLM backend: "" (rule-based stub), "hf_api", "transformers", or "llamacpp".
+    llm_backend: str = ""
+    # Hugging Face model id (used by hf_api and transformers backends).
+    llm_model_id: str = "aaditya/Llama3-OpenBioLLM-8B"
+    # HF access token for the hosted Inference API (hf_api backend). Free from
+    # https://huggingface.co/settings/tokens — nothing is downloaded locally.
+    hf_token: str = ""
+    # HF Inference provider that serves the model (OpenBioLLM-8B is on Featherless).
+    hf_provider: str = "featherless-ai"
+    # GGUF path for the llamacpp backend. Empty => stub / fall back to rules.
     llm_model_path: str = ""
 
     @property

@@ -1,13 +1,16 @@
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { Bot, Home as HomeIcon, HeartPulse, LogOut, MapPin, Pill, User } from "lucide-react";
+import { Bot, Home as HomeIcon, HeartPulse, LogOut, MapPin, Moon, Pill, Sun, User } from "lucide-react";
 import { useAuth } from "./auth.jsx";
 import Home from "./pages/Home.jsx";
 import SymptomChecker from "./pages/SymptomChecker.jsx";
 import Locator from "./pages/Locator.jsx";
 import Reminders from "./pages/Reminders.jsx";
 import Profile from "./pages/Profile.jsx";
+import EditProfile from "./pages/EditProfile.jsx";
 import History from "./pages/History.jsx";
 import Chat from "./pages/Chat.jsx";
+import DoctorDashboard from "./pages/DoctorDashboard.jsx";
+import DoctorPatient from "./pages/DoctorPatient.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import SignIn from "./pages/SignIn.jsx";
 
@@ -32,7 +35,7 @@ function Splash() {
 }
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -49,7 +52,39 @@ export default function App() {
     );
   }
 
-  // Logged in — the full app shell.
+  // Doctors get a dedicated dashboard shell (no patient tabs).
+  if (user.role === "doctor") {
+    return (
+      <div className="shell">
+        <header className="appbar">
+          <div className="brand">
+            <span className="logo"><HeartPulse size={22} /></span>
+            <div>
+              <h1>HealthNav</h1>
+              <p>Dr. {user.name.split(" ")[0]} · Clinician</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="bell" onClick={toggleTheme} aria-label="Toggle dark mode">
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </header>
+        <main className="content">
+          <Routes>
+            <Route path="/doctor" element={<DoctorDashboard />} />
+            <Route path="/doctor/patients/:id" element={<DoctorPatient />} />
+            <Route path="*" element={<Navigate to="/doctor" replace />} />
+          </Routes>
+        </main>
+      </div>
+    );
+  }
+
+  // Logged in as a patient — the full app shell.
   return (
     <div className="shell">
       <header className="appbar">
@@ -60,9 +95,15 @@ export default function App() {
             <p>Hi {user.name.split(" ")[0]}, how are you feeling?</p>
           </div>
         </div>
-        <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
-          <LogOut size={18} />
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button className="bell" onClick={toggleTheme} aria-label="Toggle dark mode"
+            title={theme === "dark" ? "Switch to light" : "Switch to dark"}>
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+            <LogOut size={18} />
+          </button>
+        </div>
       </header>
 
       <main className="content">
@@ -72,6 +113,7 @@ export default function App() {
           <Route path="/nearby" element={<Locator />} />
           <Route path="/meds" element={<Reminders />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/history" element={<History />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<Navigate to="/home" replace />} />

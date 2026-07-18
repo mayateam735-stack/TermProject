@@ -41,6 +41,7 @@ class SignupRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    role: str = Field(default="patient", pattern=r"^(patient|doctor)$")
     age: int | None = Field(default=None, ge=0, le=120)
     sex: str | None = Field(default=None, max_length=20)
     conditions: str | None = Field(default=None, max_length=2000)
@@ -56,6 +57,13 @@ class PatientUpdate(BaseModel):
     age: int | None = Field(default=None, ge=0, le=120)
     sex: str | None = Field(default=None, max_length=20)
     conditions: str | None = Field(default=None, max_length=2000)
+    theme: str | None = Field(default=None, pattern=r"^(light|dark)$")
+    height_cm: int | None = Field(default=None, ge=30, le=280)
+    weight_kg: float | None = Field(default=None, ge=1, le=500)
+    date_of_birth: date | None = None
+    activity_level: int | None = Field(default=None, ge=1, le=4)
+    avatar: str | None = Field(default=None, max_length=20)
+    doctor_id: int | None = None
 
 
 class PatientOut(BaseModel):
@@ -67,7 +75,33 @@ class PatientOut(BaseModel):
     age: int | None
     sex: str | None
     conditions: str | None
+    theme: str
+    height_cm: int | None
+    weight_kg: float | None
+    date_of_birth: date | None
+    activity_level: int | None
+    avatar: str | None
+    role: str
+    doctor_id: int | None
     created_at: datetime
+
+
+class DoctorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+
+class PatientSummary(BaseModel):
+    id: int
+    name: str
+    age: int | None
+    sex: str | None
+    conditions: str | None
+    check_count: int
+    last_check_at: datetime | None
+    last_urgency: str | None
 
 
 class SymptomCheckOut(BaseModel):
@@ -108,7 +142,7 @@ class ReminderOut(BaseModel):
 class ClinicOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str  # str so we can carry both seeded (int) and live (cuid) ids
     name: str
     kind: str
     address: str
@@ -117,3 +151,6 @@ class ClinicOut(BaseModel):
     open_hours: str | None
     estimated_wait_min: int | None
     distance_km: float | None = None
+    source: str | None = None  # "seed" | "edwaittimes.ca"
+    phone: str | None = None
+    website: str | None = None

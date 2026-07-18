@@ -74,3 +74,10 @@ def get_current_user(
         raise credentials_error
 
     return session.patient
+
+
+def get_current_doctor(current: Patient = Depends(get_current_user)) -> Patient:
+    """Dependency that requires the signed-in user to be a doctor."""
+    if current.role != "doctor":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Doctor access only")
+    return current
