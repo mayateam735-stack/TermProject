@@ -10,9 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import Base, engine
 from .routers import (
-    auth, chat, directory, doctor, locator, profile, reminders, symptom_checks, triage,
+    auth, chat, directory, doctor, insurance, locator, medications, profile,
+    push, reminders, symptom_checks, triage,
 )
 from .services import llm
+from .services import push as push_service
+from .services.scheduler import check_due_reminders
 
 # How often to ping the hosted model so the provider keeps it loaded (warm).
 _KEEP_WARM_SECONDS = 240
@@ -32,13 +35,21 @@ async def _keep_warm_loop() -> None:
 async def lifespan(app: FastAPI):
     # Create tables on startup (use Alembic migrations for production).
     Base.metadata.create_all(bind=engine)
+    push_service.ensure_keys()  # generate VAPID keys on first run
 
     warm_task = None
     if settings.llm_backend.strip().lower() == "hf_api" and settings.hf_token:
         warm_task = asyncio.create_task(_keep_warm_loop())
 
+    # Send medication-reminder pushes when they're due (checks every minute).
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(check_due_reminders, "cron", minute="*")
+    scheduler.start()
+
     yield
 
+    scheduler.shutdown(wait=False)
     if warm_task:
         warm_task.cancel()
 
@@ -67,6 +78,9 @@ app.include_router(reminders.router)
 app.include_router(profile.router)
 app.include_router(directory.router)
 app.include_router(doctor.router)
+app.include_router(insurance.router)
+app.include_router(medications.router)
+app.include_router(push.router)
 
 
 @app.get("/api/health", tags=["meta"])

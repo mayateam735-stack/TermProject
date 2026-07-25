@@ -5,9 +5,12 @@ import Home from "./pages/Home.jsx";
 import SymptomChecker from "./pages/SymptomChecker.jsx";
 import Locator from "./pages/Locator.jsx";
 import Reminders from "./pages/Reminders.jsx";
+import MedicationDetail from "./pages/MedicationDetail.jsx";
 import Profile from "./pages/Profile.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import History from "./pages/History.jsx";
+import Adherence from "./pages/Adherence.jsx";
+import Insurance from "./pages/Insurance.jsx";
 import Chat from "./pages/Chat.jsx";
 import DoctorDashboard from "./pages/DoctorDashboard.jsx";
 import DoctorPatient from "./pages/DoctorPatient.jsx";
@@ -112,9 +115,12 @@ export default function App() {
           <Route path="/triage" element={<SymptomChecker />} />
           <Route path="/nearby" element={<Locator />} />
           <Route path="/meds" element={<Reminders />} />
+          <Route path="/meds/adherence" element={<Adherence />} />
+          <Route path="/meds/:id" element={<MedicationDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/history" element={<History />} />
+          <Route path="/insurance" element={<Insurance />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>

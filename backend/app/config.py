@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     hf_token: str = ""
     # HF Inference provider that serves the model (OpenBioLLM-8B is on Featherless).
     hf_provider: str = "featherless-ai"
+    # Web Push (VAPID) contact — required by push services in the JWT "sub" claim.
+    vapid_subject: str = "mailto:healthnav@example.com"
     # GGUF path for the llamacpp backend. Empty => stub / fall back to rules.
     llm_model_path: str = ""
 
