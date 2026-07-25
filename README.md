@@ -14,26 +14,49 @@ a real clinician.
 
 A three-tier system, mirroring the proposal:
 
+
 | Tier | Technology | Location |
 | --- | --- | --- |
 | Frontend | React PWA (Vite) | [`frontend/`](frontend/) |
 | API / service | Python · FastAPI | [`backend/app/`](backend/app/) |
-| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · medical LLM stub | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
+| Data + AI | PostgreSQL on [Neon](https://neon.tech) (SQLAlchemy) · OpenBioLLM-8B (hosted) | [`backend/app/models.py`](backend/app/models.py), [`backend/app/services/`](backend/app/services/) |
 
 ### Core features in this scaffold
 - **Account creation, login, and session auth** — cookie-based sessions backed
   by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
-- **Clinic / pharmacy locator** with estimated wait times and distance sorting.
-- **Medication reminders** (create / list / delete).
+- **Clinic / pharmacy locator** with live ED/urgent-care wait times from
+  [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py))
+  and distance sorting. Falls back to the seeded clinic list if the feed is
+  unreachable.
+- **Medication reminders** (create / list / delete / skip), with a per-dose
+  taken/skipped log and weekly **adherence tracking** — daily and time-of-day
+  breakdowns, weekday vs. weekend averages
+  ([`reminders.py`](backend/app/routers/reminders.py)).
+- **Web Push reminders** — a background scheduler ([`scheduler.py`](backend/app/services/scheduler.py))
+  checks every minute for due doses and sends a browser push (via
+  [`push.py`](backend/app/services/push.py) / [`pywebpush`](https://pypi.org/project/pywebpush/))
+  with Take/Skip actions. VAPID keys are generated automatically on first run.
+- **Medication autocomplete + label info** — name search backed by the NLM
+  RxTerms API and drug info from openFDA, proxied server-side
+  ([`medications.py`](backend/app/routers/medications.py)).
+- **Insurance cost estimator** — given expected annual out-of-pocket spending,
+  ranks sample extended-health plans by total yearly cost
+  ([`insurance.py`](backend/app/routers/insurance.py)). Illustrative sample
+  plans, not real quotes.
 - **Private health history** — every symptom check is persisted per patient.
 - **Health AI chat** — conversational front-end over the same safety-bounded
   triage logic; small talk gets a friendly reply, symptom descriptions get
   guidance ([`chat.py`](backend/app/routers/chat.py)).
-- **LLM integration point** for OpenBioLLM-8B + RAG, stubbed so the app runs
-  without a model ([`llm.py`](backend/app/services/llm.py)). The rule-based
-  engine acts as a permanent safety floor the model can never downgrade.
+- **OpenBioLLM-8B** wired up via Hugging Face's hosted Inference API
+  ([`llm.py`](backend/app/services/llm.py), `LLM_BACKEND=hf_api`) — the model
+  rewords self-care guidance in plain language, but the rule-based triage
+  engine is a permanent safety floor the model can never downgrade
+  (emergencies always bypass the model). Local backends (`transformers`,
+  `llamacpp`) are also supported for offline/GPU setups.
+- **Doctor dashboard** — doctors can view their assigned patients and
+  symptom-check history ([`doctor.py`](backend/app/routers/doctor.py)).
 
 ## Running it
 
@@ -66,6 +89,24 @@ local SQLite file (`vhn.db`) — handy for quick experiments.
 > you either `ALTER TABLE` to add the column manually or drop and recreate
 > the table.
 
+#### Enabling OpenBioLLM
+By default (`LLM_BACKEND=` empty) the app runs on the rule-based triage engine
+only. To turn on real OpenBioLLM-8B guidance, set in `backend/.env`:
+```
+LLM_BACKEND=hf_api
+HF_TOKEN=<your token from https://huggingface.co/settings/tokens>
+```
+Check `GET /api/ai/status` to confirm which engine is active. The hosted
+Featherless provider can return a cold-start `503` on the first request; the
+app retries a few times before falling back to the rule engine, so guidance
+always comes back either way.
+
+#### Web Push reminders
+No setup needed — a VAPID keypair is generated automatically on first run and
+stored as `backend/vapid_private.pem` / `vapid_public.txt` (git-ignored). A
+background scheduler checks every minute for reminders due "now" (per device
+timezone) and pushes a notification with Take/Skip actions.
+
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
@@ -87,8 +128,24 @@ The dev server proxies `/api/*` to the backend on port 8000.
 | GET | `/api/clinics` | Locator (`?kind=&lat=&lng=`) |
 | GET/POST/DELETE | `/api/reminders` | Medication reminders |
 | PATCH | `/api/reminders/{id}/taken` | Mark a dose taken today |
+| PATCH | `/api/reminders/{id}/skip` | Mark a dose skipped today |
+| GET | `/api/reminders/adherence` | Weekly adherence stats (`?week_offset=`) |
+| GET | `/api/reminders/{id}` | Reminder detail + lifetime adherence |
+| GET | `/api/medications/search` | Medication name autocomplete (NLM RxTerms) |
+| GET | `/api/medications/info` | Drug label info (openFDA) |
+| GET | `/api/insurance/plans` | List sample extended-health plans |
+| POST | `/api/insurance/estimate` | Rank plans by estimated annual cost |
+| GET | `/api/push/vapid-key` | Public VAPID key for browser Push subscription |
+| POST | `/api/push/subscribe` | Register a device for Web Push |
+| POST | `/api/push/unsubscribe` | Remove a device's Push subscription |
+| POST | `/api/push/test` | Send a test push to the current patient |
 | GET/PATCH | `/api/patients/me` | View / update profile |
 | GET | `/api/patients/me/history` | Full symptom-check history |
+| GET | `/api/doctors` | List doctors patients can choose from |
+| GET | `/api/doctor/patients` | Doctor's assigned patients |
+| GET | `/api/doctor/patients/{id}` | A specific patient's profile (doctor view) |
+| GET | `/api/doctor/patients/{id}/history` | A specific patient's symptom-check history |
+| GET | `/api/ai/status` | Which AI engine (rule-based or OpenBioLLM) is currently active |
 | GET | `/api/health` | Health check |
 
 Interactive docs: <http://localhost:8000/docs>
@@ -105,7 +162,6 @@ Interactive docs: <http://localhost:8000/docs>
 | [SKILLS.md](SKILLS.md) | Capabilities & specialized workflows |
 
 ## Roadmap (from the proposal)
-- Wire up OpenBioLLM-8B via `llama-cpp-python` + RAG over trusted sources.
-- Doctor / clinic portal and patient roster (multi-sided routing tier).
+- RAG over trusted medical sources to ground OpenBioLLM's guidance further.
 - AI summary, voice input, PDF export, wearable integration.
-- Integration with B.C.'s Health Connect Registry and live clinic queues.
+- Integration with B.C.'s Health Connect Registry.
