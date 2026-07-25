@@ -66,6 +66,13 @@
   border-color: var(--line);
   color: var(--ink);
 }
+/* Focus states in the light-mode CSS flip background to white — keep it dark
+   here too, otherwise the (light) text color becomes unreadable on focus. */
+[data-theme="dark"] .auth-card input:focus,
+[data-theme="dark"] .auth-card textarea:focus {
+  background: #101a35;
+  color: var(--ink);
+}
 [data-theme="dark"] .tabbar { background: rgba(18, 26, 52, 0.92); }
 [data-theme="dark"] .btn.btn-outline { background: var(--card); }
 [data-theme="dark"] .chat-input {
