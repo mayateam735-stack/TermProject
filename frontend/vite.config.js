@@ -7,6 +7,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
+      injectManifest: { maximumFileSizeToCacheInBytes: 5_000_000 },
+      devOptions: { enabled: true, type: "module" },
       manifest: {
         name: "Virtual Health Navigator",
         short_name: "VHN",
@@ -28,5 +33,9 @@ export default defineConfig({
       // Forward API calls to the FastAPI backend during development.
       "/api": "http://localhost:8000"
     }
+  },
+  preview: {
+    port: 4173,
+    proxy: { "/api": "http://localhost:8000" }
   }
 });

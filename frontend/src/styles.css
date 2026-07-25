@@ -228,6 +228,52 @@ body {
 }
 .content::-webkit-scrollbar { display: none; }
 
+/* ------- Page fade-in (staggered cascade on every page/route) ------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.content section > *,
+.auth-screen > * {
+  animation: fadeInUp 0.42s ease backwards;
+}
+.content section > *:nth-child(1), .auth-screen > *:nth-child(1) { animation-delay: 0.03s; }
+.content section > *:nth-child(2), .auth-screen > *:nth-child(2) { animation-delay: 0.09s; }
+.content section > *:nth-child(3), .auth-screen > *:nth-child(3) { animation-delay: 0.15s; }
+.content section > *:nth-child(4), .auth-screen > *:nth-child(4) { animation-delay: 0.21s; }
+.content section > *:nth-child(5), .auth-screen > *:nth-child(5) { animation-delay: 0.27s; }
+.content section > *:nth-child(6), .auth-screen > *:nth-child(6) { animation-delay: 0.33s; }
+.content section > *:nth-child(n + 7),
+.auth-screen > *:nth-child(n + 7) { animation-delay: 0.38s; }
+@media (prefers-reduced-motion: reduce) {
+  .content section > *, .auth-screen > * { animation: none; }
+}
+
+/* ------- Fade-in on all buttons ------- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Buttons don't inherit text color by default (UA sets black) — make them
+   inherit so button-based cards use the theme's --ink in light AND dark mode. */
+button { animation: fadeIn 0.45s ease both; color: inherit; }
+@media (prefers-reduced-motion: reduce) {
+  button { animation: none; }
+}
+
+/* ------- Grow cards on hover (mouse devices only) ------- */
+.card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card:hover { transform: none; }
+}
+
 .page-title { font-size: 1.35rem; font-weight: 800; margin: 0.4rem 0 0.2rem; }
 .page-sub { color: var(--ink-soft); font-size: 0.85rem; margin: 0 0 1rem; }
 
@@ -378,6 +424,44 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 }
 .muted { color: var(--muted); font-size: 0.85rem; }
 .link-danger { background: none; border: none; color: var(--emergency); font-size: 0.8rem; cursor: pointer; padding: 0; }
+.med-actions { display: flex; gap: 0.7rem; justify-content: flex-end; margin-top: 0.2rem; }
+.link-skip { background: none; border: none; color: var(--muted); font-size: 0.8rem; cursor: pointer; padding: 0; }
+.link-skip.on { color: var(--urgent); font-weight: 700; }
+.skip-tag { color: var(--urgent); }
+
+/* ------- Medication adherence ------- */
+.adherence-card { width: 100%; text-align: left; background: var(--card); border: none; cursor: pointer; font: inherit; }
+.adherence-summary { display: flex; align-items: center; gap: 1.2rem; }
+.ring { flex: 0 0 auto; }
+.ring-value { transition: stroke-dashoffset 0.6s ease; }
+.ring-text { font-size: 1.5rem; font-weight: 800; fill: var(--ink); }
+.adherence-legend { display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.92rem; color: var(--ink-soft); }
+.adherence-legend > div { display: flex; align-items: center; gap: 0.5rem; }
+.adherence-legend b { color: var(--ink); margin-left: 0.15rem; }
+
+.week-switch { display: flex; align-items: center; justify-content: center; gap: 1rem; margin: 0.2rem 0 1rem; }
+.week-switch button {
+  background: none; border: none; color: var(--muted); cursor: pointer; display: grid; place-items: center;
+}
+.week-switch button:disabled { opacity: 0.35; cursor: default; }
+.week-pill {
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 0.55rem 1.6rem; font-weight: 800; font-size: 1rem; box-shadow: var(--shadow-sm);
+}
+
+/* Daily bars */
+.day-bars { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; height: 120px; }
+.day-bar { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.day-bar-track { flex: 1; width: 12px; background: var(--line); border-radius: 999px; display: flex; align-items: flex-end; overflow: hidden; }
+.day-bar-fill { width: 100%; border-radius: 999px; transition: height 0.5s ease; min-height: 0; }
+.day-bar-label { margin-top: 0.45rem; font-size: 0.78rem; font-weight: 700; }
+
+/* Time of day */
+.tod-row { margin-bottom: 0.9rem; }
+.tod-row:last-child { margin-bottom: 0; }
+.tod-track { position: relative; height: 10px; background: var(--line); border-radius: 999px; }
+.tod-fill { height: 100%; background: var(--self_care); border-radius: 999px; transition: width 0.5s ease; }
+.tod-pct { position: absolute; right: 0; top: -1.1rem; font-size: 0.8rem; font-weight: 700; color: var(--self_care); }
 
 .locate-btn {
   width: 100%;
@@ -719,7 +803,7 @@ button.activity-row:active { transform: scale(0.99); }
   border: none; border-radius: 999px; padding: 0.35rem 0.9rem;
   font-size: 0.82rem; font-weight: 700; cursor: pointer;
 }
-.share-card { width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); cursor: pointer; font: inherit; }
+.share-card { width: 100%; text-align: left; background: var(--card); border: none; cursor: pointer; font: inherit; }
 
 .report-grid { display: flex; align-items: stretch; gap: 0.8rem; }
 .report-stat { flex: 1; position: relative; }
@@ -781,3 +865,32 @@ button.activity-row:active { transform: scale(0.99); }
   border: 1px solid var(--line); font-size: 0.9rem; font-family: inherit;
 }
 .form-grid input:focus { outline: none; border-color: var(--primary); }
+
+/* ------- Medication autocomplete ------- */
+.autocomplete { position: relative; }
+.suggest-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+  margin: 0; padding: 0.3rem; list-style: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); max-height: 220px; overflow-y: auto;
+}
+.suggest-item {
+  padding: 0.55rem 0.7rem; border-radius: 8px; font-size: 0.9rem;
+  color: var(--ink); cursor: pointer;
+}
+.suggest-item:hover { background: var(--primary-soft); color: var(--primary-dark); }
+
+/* ------- Medication detail ------- */
+.med-open {
+  flex: 1; min-width: 0; text-align: left; background: none; border: none;
+  cursor: pointer; font: inherit; color: inherit; padding: 0;
+}
+.detail-actions { display: flex; gap: 0.6rem; }
+.pill-action {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+  padding: 0.65rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-soft); font-weight: 700; font-size: 0.88rem; cursor: pointer;
+}
+.pill-action.on { background: var(--self_care); border-color: var(--self_care); color: #fff; }
+.pill-action.warn.on { background: var(--urgent); border-color: var(--urgent); }
+.sched-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; font-size: 0.95rem; }
