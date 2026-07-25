@@ -103,6 +103,13 @@ body {
   .content section { max-width: 620px; margin-inline: auto; }
 }
 
+/* Enlarge all text on phone-width screens (~6.3" displays, ~390-430 CSS px
+   wide). Everything in this file is sized in rem, so bumping the root scales
+   the whole app proportionally instead of retuning each rule by hand. */
+@media (max-width: 480px) {
+  html { font-size: 19px; }
+}
+
 /* Laptop / desktop / large tablet: left sidebar nav + wide content.
    These are STRUCTURE only, so touch tablets get the sidebar full-screen. */
 @media (min-width: 1000px) {
@@ -551,7 +558,7 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 .chat-thread { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 0.5rem; }
 .bubble {
   max-width: 82%; padding: 0.7rem 0.9rem; border-radius: 16px;
-  font-size: 0.9rem; line-height: 1.45; white-space: pre-wrap;
+  font-size: 1rem; line-height: 1.5; white-space: pre-wrap;
 }
 .bubble.assistant {
   align-self: flex-start; background: var(--card);
@@ -579,7 +586,7 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 }
 .chat-input input {
   flex: 1; padding: 0.8rem 1rem; border-radius: 999px;
-  border: 1px solid var(--line); background: #fff; font-size: 0.92rem; font-family: inherit;
+  border: 1px solid var(--line); background: #fff; font-size: 1rem; font-family: inherit;
 }
 .chat-input input:focus { outline: none; border-color: var(--primary); }
 
