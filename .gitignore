@@ -19,3 +19,10 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Web Push VAPID keys (auto-generated)
+backend/vapid_private.pem
+backend/vapid_public.txt
+
+# vite-plugin-pwa dev output
+frontend/dev-dist/

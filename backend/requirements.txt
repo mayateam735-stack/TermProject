@@ -23,3 +23,5 @@ huggingface_hub==1.23.0   # hosted OpenBioLLM via HF Inference API (needs >=0.28
 # llama-cpp GGUF backend (LLM_BACKEND=llamacpp) — lighter, runs on CPU:
 # llama-cpp-python==0.3.5
 # huggingface_hub==0.27.0     # to download the GGUF quant
+pywebpush==2.0.0
+APScheduler==3.10.4

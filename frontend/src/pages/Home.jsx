@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Check, Clock, MapPin, Phone, Pill, Siren, Stethoscope, User } from "lucide-react";
+import { Activity, Calculator, Check, Clock, MapPin, Phone, Pill, Siren, Stethoscope, User } from "lucide-react";
 import { api } from "../api.js";
 import { useAuth } from "../auth.jsx";
 
@@ -10,6 +10,7 @@ const HELP_TILES = [
   { label: "Check Symptoms", Icon: Stethoscope, to: "/triage", variant: "primary" },
   { label: "Find Care Nearby", Icon: MapPin, to: "/nearby" },
   { label: "My Medications", Icon: Pill, to: "/meds" },
+  { label: "Insurance Costs", Icon: Calculator, to: "/insurance" },
   { label: "Health Profile", Icon: User, to: "/profile" },
   { label: "Call HealthLink 811", Icon: Phone, href: "tel:811", variant: "accent" },
   { label: "Emergency 911", Icon: Siren, href: "tel:911", variant: "danger" },

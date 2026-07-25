@@ -55,6 +55,23 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ taken }),
     }),
+  skipReminder: (id) =>
+    request(`/api/reminders/${id}/skip`, { method: "PATCH" }),
+  adherence: (weekOffset = 0) =>
+    request(`/api/reminders/adherence?week_offset=${weekOffset}`),
+  searchMedications: (q) =>
+    request(`/api/medications/search?q=${encodeURIComponent(q)}`),
+  reminderDetail: (id) => request(`/api/reminders/${id}`),
+  medicationInfo: (name) =>
+    request(`/api/medications/info?name=${encodeURIComponent(name)}`),
+
+  // Web Push
+  vapidKey: () => request("/api/push/vapid-key"),
+  pushSubscribe: (body) =>
+    request("/api/push/subscribe", { method: "POST", body: JSON.stringify(body) }),
+  pushUnsubscribe: (endpoint) =>
+    request("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  pushTest: () => request("/api/push/test", { method: "POST" }),
   deleteReminder: (id) =>
     request(`/api/reminders/${id}`, { method: "DELETE" }),
 
@@ -74,4 +91,9 @@ export const api = {
   doctorPatients: () => request("/api/doctor/patients"),
   doctorPatient: (id) => request(`/api/doctor/patients/${id}`),
   doctorPatientHistory: (id) => request(`/api/doctor/patients/${id}/history`),
+
+  // Insurance cost analysis
+  insurancePlans: () => request("/api/insurance/plans"),
+  insuranceEstimate: (usage) =>
+    request("/api/insurance/estimate", { method: "POST", body: JSON.stringify(usage) }),
 };

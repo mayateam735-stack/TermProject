@@ -97,6 +97,34 @@ class Reminder(Base):
     patient: Mapped["Patient"] = relationship(back_populates="reminders")
 
 
+class DoseLog(Base):
+    """One recorded dose event — the basis for medication-adherence stats."""
+
+    __tablename__ = "dose_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), index=True)
+    reminder_id: Mapped[int | None] = mapped_column(ForeignKey("reminders.id"), nullable=True)
+    dose_date: Mapped[date] = mapped_column(Date, index=True)
+    status: Mapped[str] = mapped_column(String(10))  # taken | skipped
+    time_of_day: Mapped[str] = mapped_column(String(20))  # copied for time-of-day buckets
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class PushSubscription(Base):
+    """A browser's Web Push subscription (one per device) for reminder alerts."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(255))
+    auth: Mapped[str] = mapped_column(String(255))
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Clinic(Base):
     """A care facility for the locator (clinic, pharmacy, or hospital ER)."""
 
