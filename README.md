@@ -14,6 +14,7 @@ a real clinician.
 
 A three-tier system, mirroring the proposal:
 
+
 | Tier | Technology | Location |
 | --- | --- | --- |
 | Frontend | React PWA (Vite) | [`frontend/`](frontend/) |
@@ -29,7 +30,21 @@ A three-tier system, mirroring the proposal:
   [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py))
   and distance sorting. Falls back to the seeded clinic list if the feed is
   unreachable.
-- **Medication reminders** (create / list / delete).
+- **Medication reminders** (create / list / delete / skip), with a per-dose
+  taken/skipped log and weekly **adherence tracking** — daily and time-of-day
+  breakdowns, weekday vs. weekend averages
+  ([`reminders.py`](backend/app/routers/reminders.py)).
+- **Web Push reminders** — a background scheduler ([`scheduler.py`](backend/app/services/scheduler.py))
+  checks every minute for due doses and sends a browser push (via
+  [`push.py`](backend/app/services/push.py) / [`pywebpush`](https://pypi.org/project/pywebpush/))
+  with Take/Skip actions. VAPID keys are generated automatically on first run.
+- **Medication autocomplete + label info** — name search backed by the NLM
+  RxTerms API and drug info from openFDA, proxied server-side
+  ([`medications.py`](backend/app/routers/medications.py)).
+- **Insurance cost estimator** — given expected annual out-of-pocket spending,
+  ranks sample extended-health plans by total yearly cost
+  ([`insurance.py`](backend/app/routers/insurance.py)). Illustrative sample
+  plans, not real quotes.
 - **Private health history** — every symptom check is persisted per patient.
 - **Health AI chat** — conversational front-end over the same safety-bounded
   triage logic; small talk gets a friendly reply, symptom descriptions get
@@ -86,6 +101,12 @@ Featherless provider can return a cold-start `503` on the first request; the
 app retries a few times before falling back to the rule engine, so guidance
 always comes back either way.
 
+#### Web Push reminders
+No setup needed — a VAPID keypair is generated automatically on first run and
+stored as `backend/vapid_private.pem` / `vapid_public.txt` (git-ignored). A
+background scheduler checks every minute for reminders due "now" (per device
+timezone) and pushes a notification with Take/Skip actions.
+
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
@@ -107,6 +128,17 @@ The dev server proxies `/api/*` to the backend on port 8000.
 | GET | `/api/clinics` | Locator (`?kind=&lat=&lng=`) |
 | GET/POST/DELETE | `/api/reminders` | Medication reminders |
 | PATCH | `/api/reminders/{id}/taken` | Mark a dose taken today |
+| PATCH | `/api/reminders/{id}/skip` | Mark a dose skipped today |
+| GET | `/api/reminders/adherence` | Weekly adherence stats (`?week_offset=`) |
+| GET | `/api/reminders/{id}` | Reminder detail + lifetime adherence |
+| GET | `/api/medications/search` | Medication name autocomplete (NLM RxTerms) |
+| GET | `/api/medications/info` | Drug label info (openFDA) |
+| GET | `/api/insurance/plans` | List sample extended-health plans |
+| POST | `/api/insurance/estimate` | Rank plans by estimated annual cost |
+| GET | `/api/push/vapid-key` | Public VAPID key for browser Push subscription |
+| POST | `/api/push/subscribe` | Register a device for Web Push |
+| POST | `/api/push/unsubscribe` | Remove a device's Push subscription |
+| POST | `/api/push/test` | Send a test push to the current patient |
 | GET/PATCH | `/api/patients/me` | View / update profile |
 | GET | `/api/patients/me/history` | Full symptom-check history |
 | GET | `/api/doctors` | List doctors patients can choose from |
