@@ -9,6 +9,9 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./vhn.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Session cookie's Secure flag — browsers only send it back over HTTPS.
+    # Leave False for local http://localhost dev; set True on Railway (HTTPS).
+    cookie_secure: bool = False
 
     # LLM backend: "" (rule-based stub), "hf_api", "transformers", or "llamacpp".
     llm_backend: str = ""

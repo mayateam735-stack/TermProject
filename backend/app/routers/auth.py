@@ -5,6 +5,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
+from ..config import settings
 from ..database import get_db
 from ..models import Patient, Session
 from ..schemas import LoginRequest, PatientOut, SignupRequest
@@ -26,7 +27,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,          # not readable by JS — no token in the browser store
         samesite="lax",
-        secure=False,           # set True behind HTTPS in production
+        secure=settings.cookie_secure,
         max_age=SESSION_DAYS * 24 * 3600,
         path="/",
     )

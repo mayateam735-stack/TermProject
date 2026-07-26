@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from .config import settings
 from .database import Base, engine
@@ -92,3 +94,21 @@ def health() -> dict[str, str]:
 def ai_status() -> dict:
     """Which AI engine backs the symptom checker and chat right now."""
     return llm.status()
+
+
+# Serve the built React app (frontend/dist) from the same origin as the API,
+# so the session cookie never has to cross origins. Only present when the
+# frontend has been built (e.g. by the Railway build step) — local dev keeps
+# using the Vite dev server on :5173 with its own proxy.
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if _FRONTEND_DIST.is_dir():
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        candidate = _FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")
