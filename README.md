@@ -27,9 +27,10 @@ A three-tier system, mirroring the proposal:
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
   always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
 - **Clinic / pharmacy locator** with live ED/urgent-care wait times from
-  [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py))
-  and distance sorting. Falls back to the seeded clinic list if the feed is
-  unreachable.
+  [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py)),
+  distance sorting from the user's geolocation, and a Google Maps view with
+  color-coded, filterable markers ([`ClinicMap.jsx`](frontend/src/components/ClinicMap.jsx)).
+  Falls back to the seeded clinic list if the feed is unreachable.
 - **Medication reminders** (create / list / delete / skip), with a per-dose
   taken/skipped log and weekly **adherence tracking** — daily and time-of-day
   breakdowns, weekday vs. weekend averages
@@ -111,9 +112,51 @@ timezone) and pushes a notification with Take/Skip actions.
 ```bash
 cd frontend
 npm install
+copy .env.example .env          # macOS/Linux: cp .env.example .env — add your Google Maps key
 npm run dev                     # http://localhost:5173
 ```
 The dev server proxies `/api/*` to the backend on port 8000.
+
+#### Clinic map (Google Maps)
+The Nearby care page's map needs a Google Maps JavaScript API key in
+`frontend/.env`:
+```
+VITE_GOOGLE_MAPS_API_KEY=<your key>
+```
+In the [Google Cloud Console](https://console.cloud.google.com/): enable the
+**Maps JavaScript API** for the project, attach a billing account (required
+even for free-tier usage), and on the key's own page check that under **API
+restrictions** "Maps JavaScript API" is allowed (a key restricted to a
+different API, e.g. Geocoding, will fail with `ApiTargetBlockedMapError`
+even though the API itself is enabled project-wide). Without a key set, the
+locator still works — the map card just shows a "Map unavailable" message.
+
+## Deploying (Railway)
+
+The app deploys as a **single Railway service**: FastAPI serves the built
+React app as static files alongside the `/api/*` routes, so the session
+cookie stays same-origin instead of splitting across two domains.
+
+Root-level files Railway's build picks up automatically:
+- [`nixpacks.toml`](nixpacks.toml) — installs Python (in a venv at
+  `/opt/venv`, since the nix-store Python's site-packages isn't writable)
+  and Node, then runs `npm run build` for the frontend.
+- [`requirements.txt`](requirements.txt) — points to
+  [`backend/requirements.txt`](backend/requirements.txt).
+- [`railway.json`](railway.json) — start command: seed clinics, then run
+  uvicorn bound to Railway's `$PORT`.
+- [`.python-version`](.python-version) — pins Python 3.12.
+
+Set these environment variables on the Railway service:
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | A Railway Postgres plugin connection string — the local disk isn't persisted across deploys, so SQLite will lose data on every redeploy. |
+| `COOKIE_SECURE` | `true` — Railway serves over HTTPS. |
+| `VITE_GOOGLE_MAPS_API_KEY` | Same key as local dev, restricted by HTTP referrer to the Railway domain. Baked in at build time by Vite. |
+| `CORS_ORIGINS` | Optional now that frontend and backend share an origin. |
+
+No "Root Directory" dashboard setting is needed — the build runs from the
+repo root and produces one deployable service.
 
 ## API overview
 | Method | Path | Purpose |
