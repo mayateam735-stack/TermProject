@@ -2,12 +2,17 @@
 # Railway service can serve both (FastAPI serves frontend/dist as static
 # files — see backend/app/main.py). Avoids splitting into two services,
 # which would put the session cookie across two origins.
+#
+# The nix-store python has no writable site-packages, so we make our own
+# venv (same as Nixpacks' built-in Python provider does) instead of
+# installing straight into it.
 [phases.setup]
 nixPkgs = ["python312", "nodejs_20"]
 
 [phases.install]
 cmds = [
-  "pip install -r requirements.txt",
+  "python3 -m venv /opt/venv",
+  "/opt/venv/bin/pip install -r requirements.txt",
   "cd frontend && npm ci"
 ]
 
