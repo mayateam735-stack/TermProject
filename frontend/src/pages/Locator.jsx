@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Clock, MapPin, Navigation } from "lucide-react";
 import { api } from "../api.js";
+import ClinicMap from "../components/ClinicMap.jsx";
 
 const MAX_WAIT = 240;
 
@@ -77,6 +78,8 @@ export default function Locator() {
       {coords && !geoError && (
         <p className="muted" style={{ marginTop: "-0.4rem" }}>Sorted by distance from you.</p>
       )}
+
+      <ClinicMap clinics={clinics} coords={coords} />
 
       <div className="chips" style={{ margin: "0.8rem 0 1rem" }}>
         {FILTERS.map((f) => (
