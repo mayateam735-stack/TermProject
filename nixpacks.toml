@@ -1,0 +1,15 @@
+# Builds the React frontend and installs the Python backend so a single
+# Railway service can serve both (FastAPI serves frontend/dist as static
+# files — see backend/app/main.py). Avoids splitting into two services,
+# which would put the session cookie across two origins.
+[phases.setup]
+nixPkgs = ["python312", "nodejs_20"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "cd frontend && npm ci"
+]
+
+[phases.build]
+cmds = ["cd frontend && npm run build"]
