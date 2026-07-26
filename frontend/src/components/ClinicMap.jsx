@@ -22,15 +22,19 @@ function loadGoogleMaps() {
 
 const KIND_COLOR = {
   hospital: "#ef4444",
-  clinic: "#4f6df5",
+  clinic: "#f97316",
   pharmacy: "#22c55e",
 };
 
-export default function ClinicMap({ clinics, coords }) {
+export default function ClinicMap({ clinics, coords, focusId, focusKey }) {
   const mapRef = useRef(null);
   const mapObjRef = useRef(null);
   const markersRef = useRef([]);
+  const markersByIdRef = useRef(new Map());
+  const focusFnRef = useRef(() => {});
+  const focusedIdRef = useRef(null);
   const [loadError, setLoadError] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (!API_KEY) {
@@ -47,6 +51,7 @@ export default function ClinicMap({ clinics, coords }) {
           disableDefaultUI: true,
           zoomControl: true,
         });
+        setMapReady(true);
       })
       .catch((e) => !cancelled && setLoadError(e.message));
     return () => {
@@ -63,6 +68,7 @@ export default function ClinicMap({ clinics, coords }) {
 
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markersByIdRef.current.clear();
 
     const bounds = new maps.LatLngBounds();
     let hasBounds = false;
@@ -89,6 +95,17 @@ export default function ClinicMap({ clinics, coords }) {
 
     const infoWindow = new maps.InfoWindow();
 
+    const openInfo = (c, marker) => {
+      infoWindow.setContent(
+        `<div style="font-family:Inter,system-ui,sans-serif;max-width:200px">
+           <strong>${c.name}</strong><br/>
+           <span style="color:#475569;font-size:0.85rem">${c.address}</span>
+           ${c.estimated_wait_min != null ? `<br/><span style="font-size:0.85rem">Est. wait: ${c.estimated_wait_min} min</span>` : ""}
+         </div>`
+      );
+      infoWindow.open({ map, anchor: marker });
+    };
+
     clinics.forEach((c) => {
       if (c.latitude == null || c.longitude == null) return;
       const position = { lat: c.latitude, lng: c.longitude };
@@ -105,23 +122,37 @@ export default function ClinicMap({ clinics, coords }) {
           strokeWeight: 2,
         },
       });
-      marker.addListener("click", () => {
-        infoWindow.setContent(
-          `<div style="font-family:Inter,system-ui,sans-serif;max-width:200px">
-             <strong>${c.name}</strong><br/>
-             <span style="color:#475569;font-size:0.85rem">${c.address}</span>
-             ${c.estimated_wait_min != null ? `<br/><span style="font-size:0.85rem">Est. wait: ${c.estimated_wait_min} min</span>` : ""}
-           </div>`
-        );
-        infoWindow.open({ map, anchor: marker });
-      });
+      marker.addListener("click", () => openInfo(c, marker));
       markersRef.current.push(marker);
+      markersByIdRef.current.set(c.id, { clinic: c, marker, position });
       bounds.extend(position);
       hasBounds = true;
     });
 
     if (hasBounds) map.fitBounds(bounds, 48);
-  }, [clinics, coords]);
+
+    focusFnRef.current = (id) => {
+      const entry = markersByIdRef.current.get(id);
+      if (!entry) return;
+      map.panTo(entry.position);
+      if (map.getZoom() < 15) map.setZoom(15);
+      openInfo(entry.clinic, entry.marker);
+    };
+
+    // Markers just got rebuilt (e.g. a late geolocation fix arrived after the
+    // user already focused a clinic) — restore whichever one was focused
+    // instead of silently dropping its info window.
+    if (focusedIdRef.current != null) focusFnRef.current(focusedIdRef.current);
+  }, [clinics, coords, mapReady]);
+
+  useEffect(() => {
+    if (focusId != null) {
+      focusedIdRef.current = focusId;
+      focusFnRef.current(focusId);
+    }
+    // focusKey changes on every click, even re-clicking the same clinic.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, focusKey]);
 
   if (loadError) {
     return <div className="card muted" style={{ textAlign: "center" }}>{loadError}</div>;

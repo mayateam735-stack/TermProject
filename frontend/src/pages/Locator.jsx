@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, MapPin, Navigation } from "lucide-react";
 import { api } from "../api.js";
 import ClinicMap from "../components/ClinicMap.jsx";
@@ -27,6 +27,13 @@ export default function Locator() {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState(null);
   const [error, setError] = useState(null);
+  const [focusRequest, setFocusRequest] = useState(null); // { id, key } — key makes re-clicking the same card refocus
+  const mapSectionRef = useRef(null);
+
+  function focusClinic(id) {
+    setFocusRequest({ id, key: Date.now() });
+    mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 
   const hasLive = clinics.some((c) => c.source === "edwaittimes.ca");
 
@@ -79,7 +86,9 @@ export default function Locator() {
         <p className="muted" style={{ marginTop: "-0.4rem" }}>Sorted by distance from you.</p>
       )}
 
-      <ClinicMap clinics={clinics} coords={coords} />
+      <div ref={mapSectionRef}>
+        <ClinicMap clinics={clinics} coords={coords} focusId={focusRequest?.id} focusKey={focusRequest?.key} />
+      </div>
 
       <div className="chips" style={{ margin: "0.8rem 0 1rem" }}>
         {FILTERS.map((f) => (
@@ -92,7 +101,12 @@ export default function Locator() {
       {error && <div className="card" style={{ color: "var(--emergency)" }}>{error}</div>}
 
       {clinics.map((c) => (
-        <div className="card" key={c.id}>
+        <div
+          className="card"
+          key={c.id}
+          onClick={() => focusClinic(c.id)}
+          style={{ cursor: "pointer" }}
+        >
           <div className="row" style={{ marginBottom: "0.35rem" }}>
             <strong style={{ fontSize: "0.98rem" }}>{c.name}</strong>
             <span className="kind-tag">{c.kind}</span>

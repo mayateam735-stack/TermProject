@@ -30,7 +30,8 @@ A three-tier system, mirroring the proposal:
   [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py)),
   distance sorting from the user's geolocation, and a Google Maps view with
   color-coded, filterable markers ([`ClinicMap.jsx`](frontend/src/components/ClinicMap.jsx)).
-  Falls back to the seeded clinic list if the feed is unreachable.
+  Clicking a clinic in the list pans/zooms the map to it and opens its info
+  window. Falls back to the seeded clinic list if the feed is unreachable.
 - **Medication reminders** (create / list / delete / skip), with a per-dose
   taken/skipped log and weekly **adherence tracking** — daily and time-of-day
   breakdowns, weekday vs. weekend averages
