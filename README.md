@@ -89,7 +89,13 @@ local SQLite file (`vhn.db`) — handy for quick experiments.
 > (`backend/app/models.py`) and an old table is already sitting in your
 > database (local or Neon), you'll get `UndefinedColumn` / 500 errors until
 > you either `ALTER TABLE` to add the column manually or drop and recreate
-> the table.
+> the table. This has bitten us for real: after pulling model changes that
+> added `login_count` / `last_login` / `app_opens` to `Patient`, login
+> against the shared Neon database started 500ing for every existing
+> account (schema drift, not bad credentials) until those columns were
+> added by hand. If auth/signup suddenly breaks after a pull, diff the
+> live table's columns against `models.py` before assuming it's a
+> credentials or connectivity problem.
 
 #### Enabling OpenBioLLM
 By default (`LLM_BACKEND=` empty) the app runs on the rule-based triage engine
@@ -117,6 +123,13 @@ copy .env.example .env          # macOS/Linux: cp .env.example .env — add your
 npm run dev                     # http://localhost:5173
 ```
 The dev server proxies `/api/*` to the backend on port 8000.
+
+> ⚠️ This is a PWA with a service worker (`vite-plugin-pwa`,
+> `registerType: "autoUpdate"`). If a fix or deploy doesn't seem to take
+> effect — stale-looking UI, requests that appear to silently no-op — try
+> an incognito/private window first before assuming the backend is broken.
+> To clear it in your regular browser: DevTools → Application → Service
+> Workers → Unregister, then hard refresh.
 
 #### Clinic map (Google Maps)
 The Nearby care page's map needs a Google Maps JavaScript API key in
