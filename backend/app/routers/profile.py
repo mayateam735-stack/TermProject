@@ -1,7 +1,7 @@
 """Patient profile and private health history (scoped to the signed-in user)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,17 @@ router = APIRouter(prefix="/api/patients", tags=["profile"])
 @router.get("/me", response_model=PatientOut)
 def get_me(current: Patient = Depends(get_current_user)) -> Patient:
     return current
+
+
+@router.post("/me/open", status_code=204, response_class=Response)
+def app_open(
+    db: Session = Depends(get_db),
+    current: Patient = Depends(get_current_user),
+) -> Response:
+    """Record that the user opened/used the app (engagement metric)."""
+    current.app_opens = (current.app_opens or 0) + 1
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.patch("/me", response_model=PatientOut)

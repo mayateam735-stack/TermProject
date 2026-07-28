@@ -43,6 +43,8 @@ def check_due_reminders() -> None:
                 today = now.date()
 
                 for r in reminders:
+                    if r.start_date and r.start_date > today:
+                        continue  # scheduled to begin on a future date
                     if r.time_of_day == hhmm and r.last_taken_date != today:
                         push.send(
                             {"endpoint": device.endpoint,

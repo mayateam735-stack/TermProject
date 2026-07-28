@@ -26,6 +26,10 @@ class Patient(Base):
     role: Mapped[str] = mapped_column(String(10), default="patient", server_default="patient")  # patient | doctor
     doctor_id: Mapped[int | None] = mapped_column(ForeignKey("patients.id"), nullable=True)  # patient's chosen doctor
     theme: Mapped[str] = mapped_column(String(10), default="light", server_default="light")
+    # Engagement tracking (for the admin module).
+    login_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    app_opens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Optional health-profile details (used for more personalized guidance).
     height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -89,6 +93,8 @@ class Reminder(Base):
     medication: Mapped[str] = mapped_column(String(120))
     dosage: Mapped[str | None] = mapped_column(String(120), nullable=True)
     time_of_day: Mapped[str] = mapped_column(String(20))  # e.g. "08:00"
+    # Day the daily schedule begins. None (legacy rows) falls back to created_at.
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[int] = mapped_column(Integer, default=1)
     # Date the dose was last marked taken; "taken today" == this equals today.
     last_taken_date: Mapped[date | None] = mapped_column(Date, nullable=True)

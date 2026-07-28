@@ -31,6 +31,11 @@ export function AuthProvider({ children }) {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // Record one "app open" per load once we know the user is signed in.
+  useEffect(() => {
+    if (user) api.appOpen().catch(() => {});
+  }, [!!user]);
+
   const signup = async (body) => {
     const u = await api.signup(body);
     setUser(u);

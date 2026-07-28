@@ -102,6 +102,9 @@ class PatientSummary(BaseModel):
     check_count: int
     last_check_at: datetime | None
     last_urgency: str | None
+    reminder_count: int = 0
+    adherence_pct: int | None = None  # last 30 days; None if nothing scheduled
+    needs_attention: bool = False  # last check was urgent/emergency
 
 
 class SymptomCheckOut(BaseModel):
@@ -120,6 +123,7 @@ class ReminderCreate(BaseModel):
     medication: str = Field(min_length=1, max_length=120)
     dosage: str | None = None
     time_of_day: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")  # HH:MM
+    start_date: date | None = None  # defaults to today on the server
 
 
 class ReminderTakenUpdate(BaseModel):
@@ -134,6 +138,7 @@ class ReminderOut(BaseModel):
     dosage: str | None
     time_of_day: str
     active: int
+    start_date: date | None
     last_taken_date: date | None
     created_at: datetime
 

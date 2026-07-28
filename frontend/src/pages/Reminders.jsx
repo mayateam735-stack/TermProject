@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, Bell, Check, ChevronRight, Clock, Plus, X } from "lucide-react";
+import { AlertCircle, Bell, Calendar, Check, ChevronRight, Clock, Flame, Plus, Trophy, X } from "lucide-react";
 import { api } from "../api.js";
 import AdherenceRing from "../components/AdherenceRing.jsx";
 import { currentSubscription, disableNotifications, enableNotifications, pushSupported } from "../push.js";
@@ -12,12 +12,23 @@ function fmt(t) {
   return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function fmtDate(iso) {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
 export default function Reminders() {
   const navigate = useNavigate();
   const [reminders, setReminders] = useState([]);
   const [adh, setAdh] = useState(null);
+  const [streak, setStreak] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ medication: "", dosage: "", time_of_day: "08:00" });
+  const [form, setForm] = useState({ medication: "", dosage: "", time_of_day: "08:00", start_date: todayStr() });
   const [error, setError] = useState(null);
   const [suggests, setSuggests] = useState([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -51,6 +62,7 @@ export default function Reminders() {
   function load() {
     api.listReminders().then(setReminders).catch((e) => setError(e.message));
     api.adherence(0).then(setAdh).catch(() => setAdh(null));
+    api.adherenceStreak().then(setStreak).catch(() => setStreak(null));
   }
   useEffect(load, []);
 
@@ -79,7 +91,7 @@ export default function Reminders() {
     setError(null);
     try {
       await api.createReminder(form);
-      setForm({ medication: "", dosage: "", time_of_day: "08:00" });
+      setForm({ medication: "", dosage: "", time_of_day: "08:00", start_date: todayStr() });
       setAdding(false);
       load();
     } catch (err) {
@@ -122,6 +134,32 @@ export default function Reminders() {
             )}
           </div>
           {notifMsg && <p className="muted" style={{ margin: "0.6rem 0 0", fontSize: "0.8rem" }}>{notifMsg}</p>}
+        </div>
+      )}
+
+      {/* Adherence streak — a lightweight motivation stat. */}
+      {streak?.has_meds && (
+        <div className="card streak-card">
+          <div className={`streak-flame ${streak.current_streak > 0 ? "lit" : ""}`}>
+            <Flame size={26} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="streak-num">
+              {streak.current_streak}<span className="streak-unit">day{streak.current_streak === 1 ? "" : "s"}</span>
+            </div>
+            <div className="med-dose">
+              {streak.current_streak === 0
+                ? "Take every dose today to start a streak"
+                : streak.today_complete
+                  ? "All caught up today — keep it going!"
+                  : "Finish today's doses to extend it"}
+            </div>
+          </div>
+          {streak.best_streak > 0 && (
+            <div className="streak-best">
+              <Trophy size={14} /> Best {streak.best_streak}
+            </div>
+          )}
         </div>
       )}
 
@@ -170,8 +208,16 @@ export default function Reminders() {
           </div>
           <input placeholder="Dosage (e.g. 500 mg)" value={form.dosage}
             onChange={(e) => setForm({ ...form, dosage: e.target.value })} />
-          <input type="time" value={form.time_of_day}
-            onChange={(e) => setForm({ ...form, time_of_day: e.target.value })} required />
+          <div className="field-inline">
+            <label className="field-inline-label"><Clock size={14} /> Time</label>
+            <input type="time" value={form.time_of_day}
+              onChange={(e) => setForm({ ...form, time_of_day: e.target.value })} required />
+          </div>
+          <div className="field-inline">
+            <label className="field-inline-label"><Calendar size={14} /> Start date</label>
+            <input type="date" value={form.start_date} min={todayStr()}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
+          </div>
           <button className="btn" type="submit">Add reminder</button>
         </form>
       )}
@@ -185,6 +231,7 @@ export default function Reminders() {
       {reminders.map((r) => {
         const taken = r.today_status === "taken";
         const skipped = r.today_status === "skipped";
+        const notStarted = r.start_date && r.start_date > todayStr();
         return (
           <div className={`card med-card ${taken ? "done" : ""}`} key={r.id}>
             <button className={`check ${taken ? "done" : ""}`} onClick={() => toggleTaken(r)}
@@ -195,7 +242,13 @@ export default function Reminders() {
               title="View medication details">
               <div className="med-name">{r.medication}</div>
               <div className="med-dose">
-                {r.dosage || "—"}{skipped && <span className="skip-tag"> · skipped today</span>}
+                {r.dosage || "—"}
+                {r.start_date && (
+                  <span className={notStarted ? "start-tag" : "skip-tag"}>
+                    {" · "}{notStarted ? "starts" : "from"} {fmtDate(r.start_date)}
+                  </span>
+                )}
+                {skipped && <span className="skip-tag"> · skipped today</span>}
               </div>
             </button>
             <div style={{ textAlign: "right" }}>
