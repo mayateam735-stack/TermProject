@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, User } from "lucide-react";
 import { api } from "../api.js";
 import { useAuth } from "../auth.jsx";
+import { useToast } from "../toast.jsx";
 import { AVATAR_KEYS, avatarGradient } from "../avatars.js";
 
 const ACTIVITY = [
@@ -15,6 +16,7 @@ const ACTIVITY = [
 export default function EditProfile() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [form, setForm] = useState({
     name: user?.name ?? "",
     avatar: user?.avatar ?? "mint",
@@ -50,6 +52,7 @@ export default function EditProfile() {
         doctor_id: form.doctor_id ? Number(form.doctor_id) : null,
       });
       setUser(updated);
+      toast("Profile updated");
       navigate("/profile", { replace: true });
     } catch (err) {
       setError(err.message);

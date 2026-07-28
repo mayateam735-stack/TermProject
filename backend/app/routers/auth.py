@@ -1,6 +1,8 @@
 """Authentication endpoints: signup, login, logout, current user."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
@@ -47,6 +49,8 @@ def signup(body: SignupRequest, response: Response, db: DbSession = Depends(get_
         age=body.age,
         sex=body.sex,
         conditions=body.conditions,
+        login_count=1,
+        last_login=datetime.now(timezone.utc),
     )
     db.add(patient)
     db.commit()
@@ -65,7 +69,10 @@ def login(body: LoginRequest, response: Response, db: DbSession = Depends(get_db
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 
+    patient.login_count = (patient.login_count or 0) + 1
+    patient.last_login = datetime.now(timezone.utc)
     session = create_session(db, patient)
+    db.commit()
     _set_session_cookie(response, session.token)
     return patient
 

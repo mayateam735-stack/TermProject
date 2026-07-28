@@ -59,11 +59,21 @@ export const api = {
     request(`/api/reminders/${id}/skip`, { method: "PATCH" }),
   adherence: (weekOffset = 0) =>
     request(`/api/reminders/adherence?week_offset=${weekOffset}`),
+  adherenceStreak: () => request("/api/reminders/streak"),
   searchMedications: (q) =>
     request(`/api/medications/search?q=${encodeURIComponent(q)}`),
   reminderDetail: (id) => request(`/api/reminders/${id}`),
   medicationInfo: (name) =>
     request(`/api/medications/info?name=${encodeURIComponent(name)}`),
+
+  // Admin
+  adminStats: () => request("/api/admin/stats"),
+  adminTimeseries: (days = 30) => request(`/api/admin/timeseries?days=${days}`),
+  adminUsers: () => request("/api/admin/users"),
+  adminUser: (id) => request(`/api/admin/users/${id}`),
+  adminUpdateUser: (id, body) =>
+    request(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminDeleteUser: (id) => request(`/api/admin/users/${id}`, { method: "DELETE" }),
 
   // Web Push
   vapidKey: () => request("/api/push/vapid-key"),
@@ -84,6 +94,7 @@ export const api = {
 
   updateMe: (body) =>
     request("/api/patients/me", { method: "PATCH", body: JSON.stringify(body) }),
+  appOpen: () => request("/api/patients/me/open", { method: "POST" }),
   history: (limit = 50) => request(`/api/symptom-checks?limit=${limit}`),
 
   // Doctors
@@ -91,6 +102,7 @@ export const api = {
   doctorPatients: () => request("/api/doctor/patients"),
   doctorPatient: (id) => request(`/api/doctor/patients/${id}`),
   doctorPatientHistory: (id) => request(`/api/doctor/patients/${id}/history`),
+  doctorPatientMeds: (id) => request(`/api/doctor/patients/${id}/medications`),
 
   // Insurance cost analysis
   insurancePlans: () => request("/api/insurance/plans"),

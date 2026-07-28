@@ -23,6 +23,14 @@ def _owned_reminder(reminder_id: int, current: Patient, db: Session) -> Reminder
     return reminder
 
 
+def _effective_start(r: Reminder) -> date:
+    """The day this reminder's daily schedule begins (start_date, else created day)."""
+    if r.start_date:
+        return r.start_date
+    ca = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
+    return ca.astimezone().date()
+
+
 def _today_status(db: Session, reminder_id: int) -> str | None:
     log = db.scalar(
         select(DoseLog).where(
@@ -75,7 +83,10 @@ def create_reminder(
     db: Session = Depends(get_db),
     current: Patient = Depends(get_current_user),
 ) -> Reminder:
-    reminder = Reminder(patient_id=current.id, **body.model_dump())
+    data = body.model_dump()
+    if data.get("start_date") is None:
+        data["start_date"] = date.today()
+    reminder = Reminder(patient_id=current.id, **data)
     db.add(reminder)
     db.commit()
     db.refresh(reminder)
@@ -202,9 +213,7 @@ def adherence(
     buckets = {k: {"scheduled": 0, "taken": 0} for k, _ in BUCKETS}
 
     for r in reminders:
-        # created_at is UTC; compare in local time so "created today" counts today.
-        ca = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
-        r_start = ca.astimezone().date()
+        r_start = _effective_start(r)
         b = _bucket(r.time_of_day)
         for i in range(7):
             day = start + timedelta(days=i)
@@ -257,6 +266,70 @@ def adherence(
     )
 
 
+class StreakResult(BaseModel):
+    current_streak: int
+    best_streak: int
+    today_complete: bool
+    has_meds: bool
+
+
+# NOTE: declared before /{reminder_id} so the static route wins.
+@router.get("/streak", response_model=StreakResult)
+def streak(
+    db: Session = Depends(get_db),
+    current: Patient = Depends(get_current_user),
+) -> StreakResult:
+    """Consecutive days where every scheduled dose was taken (a motivation stat).
+
+    Today doesn't break the streak until the day is over — an unfinished today
+    is skipped so the count reflects yesterday-and-back until you complete today.
+    """
+    today = date.today()
+    reminders = list(db.scalars(
+        select(Reminder).where(Reminder.patient_id == current.id)
+    ).all())
+    if not reminders:
+        return StreakResult(current_streak=0, best_streak=0, today_complete=False, has_meds=False)
+
+    starts = [_effective_start(r) for r in reminders]
+    earliest = min(starts)
+
+    taken_by_day: dict[date, int] = {}
+    for l in db.scalars(
+        select(DoseLog).where(DoseLog.patient_id == current.id, DoseLog.status == "taken")
+    ).all():
+        taken_by_day[l.dose_date] = taken_by_day.get(l.dose_date, 0) + 1
+
+    # No scheduled days yet (e.g. every reminder starts in the future).
+    if earliest > today:
+        return StreakResult(current_streak=0, best_streak=0, today_complete=False, has_meds=True)
+
+    # flags[0] == today, going back to the earliest scheduled day.
+    flags: list[bool] = []
+    day = today
+    while day >= earliest:
+        scheduled = sum(1 for s in starts if s <= day)
+        flags.append(scheduled > 0 and taken_by_day.get(day, 0) >= scheduled)
+        day -= timedelta(days=1)
+
+    today_complete = flags[0]
+    i = 1 if not flags[0] else 0  # grace: an unfinished today doesn't reset
+    current_streak = 0
+    while i < len(flags) and flags[i]:
+        current_streak += 1
+        i += 1
+
+    best = run = 0
+    for f in flags:
+        run = run + 1 if f else 0
+        best = max(best, run)
+
+    return StreakResult(
+        current_streak=current_streak, best_streak=best,
+        today_complete=today_complete, has_meds=True,
+    )
+
+
 class ReminderDetail(BaseModel):
     id: int
     medication: str
@@ -282,8 +355,7 @@ def reminder_detail(
 ) -> ReminderDetail:
     r = _owned_reminder(reminder_id, current, db)
     today = date.today()
-    ca = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
-    start = ca.astimezone().date()
+    start = _effective_start(r)
 
     logs = list(db.scalars(select(DoseLog).where(DoseLog.reminder_id == r.id)).all())
     log_by = {l.dose_date: l.status for l in logs}

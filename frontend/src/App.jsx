@@ -14,6 +14,9 @@ import Insurance from "./pages/Insurance.jsx";
 import Chat from "./pages/Chat.jsx";
 import DoctorDashboard from "./pages/DoctorDashboard.jsx";
 import DoctorPatient from "./pages/DoctorPatient.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import AdminUsers from "./pages/AdminUsers.jsx";
+import AdminUserEdit from "./pages/AdminUserEdit.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import SignIn from "./pages/SignIn.jsx";
 
@@ -52,6 +55,39 @@ export default function App() {
         <Route path="/login" element={<SignIn />} />
         <Route path="*" element={<Navigate to="/signup" replace />} />
       </Routes>
+    );
+  }
+
+  // Admins get an analytics dashboard shell.
+  if (user.role === "admin") {
+    return (
+      <div className="shell">
+        <header className="appbar">
+          <div className="brand">
+            <span className="logo"><HeartPulse size={22} /></span>
+            <div>
+              <h1>HealthNav</h1>
+              <p>{user.name.split(" ")[0]} · Admin</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="bell" onClick={toggleTheme} aria-label="Toggle dark mode">
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </header>
+        <main className="content">
+          <Routes>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/users/:id" element={<AdminUserEdit />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Routes>
+        </main>
+      </div>
     );
   }
 

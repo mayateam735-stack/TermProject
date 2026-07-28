@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     hf_provider: str = "featherless-ai"
     # Web Push (VAPID) contact — required by push services in the JWT "sub" claim.
     vapid_subject: str = "mailto:healthnav@example.com"
+    # Periodically ping the hosted LLM to keep it warm. OFF by default — on a free
+    # HF account this burns the limited monthly inference credit. Enable only with billing.
+    llm_keep_warm: bool = False
     # GGUF path for the llamacpp backend. Empty => stub / fall back to rules.
     llm_model_path: str = ""
 

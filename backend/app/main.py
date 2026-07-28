@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from .config import settings
 from .database import Base, engine
 from .routers import (
-    auth, chat, directory, doctor, insurance, locator, medications, profile,
+    admin, auth, chat, directory, doctor, insurance, locator, medications, profile,
     push, reminders, symptom_checks, triage,
 )
 from .services import llm
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     push_service.ensure_keys()  # generate VAPID keys on first run
 
     warm_task = None
-    if settings.llm_backend.strip().lower() == "hf_api" and settings.hf_token:
+    if settings.llm_keep_warm and settings.llm_backend.strip().lower() == "hf_api" and settings.hf_token:
         warm_task = asyncio.create_task(_keep_warm_loop())
 
     # Send medication-reminder pushes when they're due (checks every minute).
@@ -83,6 +83,7 @@ app.include_router(doctor.router)
 app.include_router(insurance.router)
 app.include_router(medications.router)
 app.include_router(push.router)
+app.include_router(admin.router)
 
 
 @app.get("/api/health", tags=["meta"])

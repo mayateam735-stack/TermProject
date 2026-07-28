@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Calculator, Check, Clock, MapPin, Phone, Pill, Siren, Stethoscope, User } from "lucide-react";
+import { Activity, Calculator, Check, Clock, MapPin, MessageCircle, Phone, Pill, ShieldCheck, Siren, Stethoscope, User } from "lucide-react";
 import { api } from "../api.js";
 import { useAuth } from "../auth.jsx";
+import InstallBanner from "../components/InstallBanner.jsx";
 
 // "How can we help you?" quick actions. `to` navigates in-app; `href` is a
 // real device action (tap-to-call). Each tile maps to a working destination.
@@ -86,7 +87,9 @@ export default function Home() {
   // "Upcoming" = reminders not yet taken today. We keep GET /api/reminders
   // returning everything (the Meds tab needs the full set + taken state) and
   // filter for the dashboard view here.
-  const upcoming = (reminders ?? []).filter((r) => r.last_taken_date !== todayStr());
+  const upcoming = (reminders ?? []).filter(
+    (r) => r.last_taken_date !== todayStr() && (!r.start_date || r.start_date <= todayStr())
+  );
 
   async function markTaken(r) {
     const updated = await api.setReminderTaken(r.id, true);
@@ -98,8 +101,16 @@ export default function Home() {
       <h2 className="page-title">{greeting()}, {user?.name?.split(" ")[0]}</h2>
       <p className="page-sub">Here's your health at a glance.</p>
 
-      {/* How can we help you? — quick-action grid. */}
-      <div className="banner">How can we help you?</div>
+      {/* Standing safety framing — this app guides, it never diagnoses. */}
+      <div className="trust-chip"><ShieldCheck size={14} /> Guidance, not diagnosis · your data stays private</div>
+
+      {/* Offer to install the PWA (only shows when installable). */}
+      <InstallBanner />
+
+      {/* How can we help you? — opens the Health AI chat. */}
+      <button className="banner" onClick={() => navigate("/chat")} title="Chat with Health AI">
+        <MessageCircle size={18} /> How can we help you?
+      </button>
       <div className="help-grid">
         {HELP_TILES.map((t) => (
           <HelpTile key={t.label} {...t} navigate={navigate} />
