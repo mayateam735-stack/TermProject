@@ -21,6 +21,22 @@ _UA = "VHN-HealthNav/0.1 (CSIS 4495 student project)"
 # edwaittimes facility type -> our locator "kind".
 _KIND_MAP = {"ed": "hospital", "upcc": "clinic"}
 
+# Age-eligibility codes -> friendly labels.
+_AUDIENCE = {
+    "seventeenPlus": "Ages 17+ (adults)",
+    "eighteenPlus": "Ages 18+ (adults)",
+    "nineteenPlus": "Ages 19+ (adults)",
+    "allAges": "All ages",
+    "pediatric": "Children & youth",
+    "under17": "Under 17 (pediatric)",
+}
+
+
+def _audience_label(code: str | None) -> str | None:
+    if not code:
+        return None
+    return _AUDIENCE.get(code, code)
+
 _cache: dict[str, object] = {"ts": 0.0, "data": None}
 
 
@@ -37,6 +53,12 @@ def _normalise(entry: dict) -> dict | None:
         return None
     wait = entry.get("waitTime") or {}
     show = entry.get("showWaitTimes", True)
+
+    alert = None
+    if entry.get("alertShow"):
+        parts = [entry.get("alertTitle"), entry.get("alertDescription")]
+        alert = " — ".join(p for p in parts if p) or None
+
     return {
         "id": str(entry.get("id")),
         "name": entry.get("name") or "Unknown facility",
@@ -49,6 +71,15 @@ def _normalise(entry: dict) -> dict | None:
         "phone": entry.get("phone"),
         "website": entry.get("website"),
         "source": "edwaittimes.ca",
+        # Extra detail surfaced when the card is expanded.
+        "elos_min": wait.get("elosMinutes") if show else None,
+        "wait_status": wait.get("status") if show else None,
+        "updated_at": wait.get("createdAt") if show else None,
+        "description": entry.get("description") or None,
+        "audience": _audience_label(entry.get("audience")),
+        "additional_info": entry.get("additionalInfo") or None,
+        "alert": alert,
+        "open247": bool(entry.get("open247")),
     }
 
 

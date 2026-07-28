@@ -159,3 +159,12 @@ class ClinicOut(BaseModel):
     source: str | None = None  # "seed" | "edwaittimes.ca"
     phone: str | None = None
     website: str | None = None
+    # Extra live detail from edwaittimes.ca (shown when a card is expanded).
+    elos_min: int | None = None          # estimated length of stay (total visit)
+    wait_status: str | None = None       # "normal" | "busy" | ...
+    updated_at: str | None = None        # ISO timestamp of the wait reading
+    description: str | None = None        # e.g. "Adult hospital."
+    audience: str | None = None           # e.g. "Ages 17+ (adults)"
+    additional_info: str | None = None    # facility notes
+    alert: str | None = None              # active alert (title — description)
+    open247: bool | None = None

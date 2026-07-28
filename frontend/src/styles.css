@@ -593,6 +593,51 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 .wait-bar { height: 7px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 0.4rem; }
 .wait-bar > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
 
+/* ------- Expandable live facility card ------- */
+.locator-card.expandable { cursor: pointer; text-align: left; }
+.locator-card.expandable:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--line)); }
+.expand-row {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 0.7rem; padding: 0.6rem 0 0;
+  border: none; border-top: 1px solid var(--line);
+  background: none; cursor: pointer; font-family: inherit;
+  color: var(--primary); font-size: 0.82rem; font-weight: 600;
+}
+.expand-row .chev { transition: transform 0.2s ease; }
+.expand-row .chev.up { transform: rotate(180deg); }
+
+.clinic-detail { margin-top: 0.7rem; animation: expand-in 0.22s ease; cursor: default; }
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;
+}
+.detail-stat { background: var(--surface); border-radius: var(--radius-sm); padding: 0.55rem 0.65rem; }
+.detail-label { font-size: 0.7rem; color: var(--muted); }
+.detail-value { font-size: 0.92rem; font-weight: 700; margin-top: 0.1rem; }
+.detail-value.ok { color: var(--self_care); }
+.detail-value.warn { color: var(--urgent); }
+.detail-value.bad { color: var(--emergency); }
+
+.clinic-alert {
+  display: flex; align-items: flex-start; gap: 0.45rem;
+  background: color-mix(in srgb, var(--urgent) 12%, transparent);
+  color: var(--urgent); border: 1px solid color-mix(in srgb, var(--urgent) 28%, transparent);
+  border-radius: var(--radius-sm); padding: 0.55rem 0.7rem;
+  font-size: 0.82rem; font-weight: 600; margin-bottom: 0.6rem;
+}
+.clinic-alert svg { flex: 0 0 auto; margin-top: 1px; }
+.detail-note { margin: 0.6rem 0 0; font-size: 0.83rem; color: var(--ink-soft); line-height: 1.45; }
+
+.detail-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+.detail-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.5rem 0.8rem; border-radius: 999px;
+  background: var(--primary-soft); color: var(--primary-dark);
+  font-size: 0.82rem; font-weight: 700; text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.detail-btn:active { transform: translateY(1px); }
+
 /* ------- Bottom tab bar ------- */
 .tabbar {
   flex: 0 0 auto;
