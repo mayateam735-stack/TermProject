@@ -88,8 +88,8 @@ export const api = {
   listSymptomChecks: (limit = 5) =>
     request(`/api/symptom-checks?limit=${limit}`),
 
-  chat: (message) =>
-    request("/api/chat", { method: "POST", body: JSON.stringify({ message }) }),
+  chat: (message, history = []) =>
+    request("/api/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
   aiStatus: () => request("/api/ai/status"),
 
   updateMe: (body) =>

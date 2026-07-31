@@ -14,7 +14,7 @@
   --surface: #f7f9fc;          /* subtle nested surface */
   --ink: #101828;
   --ink-soft: #475467;
-  --muted: #8a95a8;
+  --muted: #667085;            /* WCAG-AA on white (~4.6:1); was too light before */
   --line: #e7ebf1;
 
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
@@ -90,13 +90,14 @@
 }
 [data-theme="dark"] .tabbar { background: rgba(18, 26, 52, 0.92); }
 [data-theme="dark"] .btn.btn-outline { background: var(--card); }
-[data-theme="dark"] .chat-input {
-  background: linear-gradient(180deg, transparent, var(--bg-bottom) 30%);
-}
+[data-theme="dark"] .chat-input { background: var(--bg-bottom); }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body, #root { height: 100%; }
+/* The app lives in a fixed shell; only .content scrolls. Never let the page
+   (document) itself scroll — that's what made the bottom tab bar drift. */
+html, body { overflow: hidden; overscroll-behavior: none; }
 html { scroll-behavior: smooth; }
 
 body {
@@ -274,7 +275,9 @@ button, a { outline: none; }
 /* ------- Scrollable content ------- */
 .content {
   flex: 1 1 auto;
+  min-height: 0; /* let this flex child shrink so IT scrolls, not the whole shell */
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.5rem 1.25rem 1.5rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -342,6 +345,29 @@ button { animation: fadeIn 0.45s ease both; color: inherit; }
   font-size: 0.74rem; font-weight: 600; letter-spacing: 0.01em;
 }
 .trust-chip svg { flex: 0 0 auto; }
+
+/* ------- Self-care remedy suggestions (self_care results only) ------- */
+.self-care-tips {
+  margin: 0.7rem 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--self_care) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--self_care) 22%, transparent);
+}
+.tips-head {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-weight: 700; font-size: 0.88rem; color: var(--self_care);
+}
+.tips-list { margin: 0.5rem 0 0; padding-left: 1.15rem; }
+.tips-list li { margin-bottom: 0.3rem; font-size: 0.86rem; line-height: 1.45; }
+.tips-note { margin: 0.5rem 0 0; font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
+.tips-link {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.6rem;
+  font-size: 0.82rem; font-weight: 700; color: var(--primary-dark); text-decoration: none;
+}
+.tips-link:hover { text-decoration: underline; }
+/* In the chat thread, align the tips card under the assistant bubble. */
+.bubble-source + .self-care-tips { align-self: flex-start; max-width: 88%; }
 
 /* ------- PWA install banner ------- */
 .install-banner {
@@ -774,13 +800,20 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 .fab:hover .fab-tip, .fab:focus-visible .fab-tip { opacity: 1; transform: translateX(0); }
 
 /* ------- Chat page ------- */
-.chat-page { display: flex; flex-direction: column; min-height: 100%; }
-.chat-head { display: flex; align-items: center; gap: 0.7rem; padding: 0.3rem 0 0.8rem; }
+/* Fill the content area so ONLY the thread scrolls and the input stays pinned. */
+.chat-page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.content:has(.chat-page) { padding-bottom: 0; }
+.chat-head { flex: 0 0 auto; display: flex; align-items: center; gap: 0.7rem; padding: 0.3rem 0 0.8rem; }
 .chat-avatar {
   width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
   color: #fff; background: linear-gradient(135deg, var(--primary), #8b5cf6);
 }
-.chat-thread { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 0.5rem; }
+.chat-thread {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 0.5rem;
+  scrollbar-width: none;
+}
+.chat-thread::-webkit-scrollbar { display: none; }
 .bubble {
   max-width: 82%; padding: 0.7rem 0.9rem; border-radius: 16px;
   font-size: 1rem; line-height: 1.5; white-space: pre-wrap;
@@ -805,9 +838,10 @@ button.btn:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
 .bubble.typing span:nth-child(3) { animation-delay: 0.3s; }
 @keyframes typing { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
 .chat-input {
-  position: sticky; bottom: 0; display: flex; gap: 0.5rem;
-  padding: 0.6rem 0; margin-top: auto;
-  background: linear-gradient(180deg, transparent, var(--bg-bottom) 30%);
+  flex: 0 0 auto; display: flex; gap: 0.5rem; align-items: center;
+  padding: 0.7rem 0 calc(0.7rem + env(safe-area-inset-bottom, 0));
+  background: var(--bg-bottom);
+  border-top: 1px solid var(--line);
 }
 .chat-input input {
   flex: 1; padding: 0.8rem 1rem; border-radius: 999px;
@@ -891,10 +925,11 @@ button.activity-row:active { transform: scale(0.99); }
 /* ------- Auth screens ------- */
 .auth-screen {
   flex: 1 1 auto;
+  min-height: 0; /* allow internal scroll for a tall sign-up form */
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center; /* center when it fits; scroll from top when it overflows */
   padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0));
   text-align: center;
   overflow-y: auto;

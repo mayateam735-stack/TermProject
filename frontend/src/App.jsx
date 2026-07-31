@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Bot, Home as HomeIcon, HeartPulse, LogOut, MapPin, Moon, Pill, Sun, User } from "lucide-react";
 import { useAuth } from "./auth.jsx";
@@ -14,9 +15,10 @@ import Insurance from "./pages/Insurance.jsx";
 import Chat from "./pages/Chat.jsx";
 import DoctorDashboard from "./pages/DoctorDashboard.jsx";
 import DoctorPatient from "./pages/DoctorPatient.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
-import AdminUsers from "./pages/AdminUsers.jsx";
-import AdminUserEdit from "./pages/AdminUserEdit.jsx";
+// Admin pages pull in recharts — lazy-load so patients never download that chunk.
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers.jsx"));
+const AdminUserEdit = lazy(() => import("./pages/AdminUserEdit.jsx"));
 import SignUp from "./pages/SignUp.jsx";
 import SignIn from "./pages/SignIn.jsx";
 
@@ -80,12 +82,14 @@ export default function App() {
           </div>
         </header>
         <main className="content">
-          <Routes>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/users/:id" element={<AdminUserEdit />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
-          </Routes>
+          <Suspense fallback={<div className="card skeleton-row" />}>
+            <Routes>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/users/:id" element={<AdminUserEdit />} />
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
     );

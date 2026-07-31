@@ -35,9 +35,14 @@ async def _keep_warm_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup (use Alembic migrations for production).
+    # Create missing tables, then add any new model columns to existing tables
+    # (create_all won't ALTER — see services/migrate.py).
     Base.metadata.create_all(bind=engine)
-    push_service.ensure_keys()  # generate VAPID keys on first run
+    from .services.migrate import ensure_columns
+    added = ensure_columns()
+    if added:
+        print("[migrate] added columns:", ", ".join(added))
+    push_service.ensure_keys()  # resolve/generate VAPID keys on first run
 
     warm_task = None
     if settings.llm_keep_warm and settings.llm_backend.strip().lower() == "hf_api" and settings.hf_token:

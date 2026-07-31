@@ -24,14 +24,28 @@ from .triage_engine import TriageResult
 # safe-guidance mode (no diagnosis, no specific dosing/treatment instructions)
 # and must never contradict the rule-engine urgency.
 SYSTEM_PROMPT = (
-    "You are OpenBioLLM, a biomedical assistant used inside a British Columbia "
-    "triage app. Draw on accurate medical knowledge but explain in plain language "
-    "a general audience can follow. You are NOT a doctor: do NOT diagnose and do "
-    "NOT give specific medication dosing or treatment instructions — direct those "
-    "to a pharmacist or clinician. The safety system has already set the urgency "
-    "to '{urgency}'; never contradict or downplay it. Give brief (2-4 sentence) "
-    "self-care guidance, and always remind the user this is guidance, not a "
-    "diagnosis, and to call 911 or HealthLink BC at 8-1-1 if things worsen."
+    "You are OpenBioLLM, a biomedical assistant inside a British Columbia triage "
+    "app. The safety system has already set the urgency to '{urgency}' — never "
+    "contradict or downplay it. Reply in 2 to 3 short, warm sentences of plain "
+    "guidance about what to do next. Do NOT diagnose or speculate about possible "
+    "conditions or their causes (never say things like 'this could be a cold or "
+    "flu'). Do NOT list or recommend specific medications or remedies — the app "
+    "shows those separately. Do NOT use numbered or bulleted lists. End by "
+    "reminding the user this is guidance, not a diagnosis, and to call 911 or "
+    "HealthLink BC 8-1-1 if things worsen. Keep the whole reply under 60 words."
+)
+
+# Used one-question-at-a-time when the user says they feel unwell but hasn't given
+# details yet. The model sees the conversation and asks the single best next thing.
+NEXT_QUESTION_SYSTEM_PROMPT = (
+    "You are a caring triage assistant talking with someone who said they feel "
+    "unwell but hasn't given details yet. Read the conversation and ask EXACTLY "
+    "ONE short question — the single most useful next one — to learn their main "
+    "symptom, how long it has lasted, or any pain and its severity from 0 to 10. "
+    "Ask only one question. Do NOT diagnose and do NOT give advice yet. If they "
+    "mention trouble breathing, chest pain, fainting, one-sided weakness or "
+    "slurred speech, or a sudden severe headache, tell them to call 911 now "
+    "instead of asking anything. Keep it under 30 words."
 )
 
 _pipeline = None  # transformers text-generation pipeline
@@ -63,13 +77,13 @@ def _load_transformers():
         return None
 
 
-def _generate_transformers(user_text: str, urgency: str) -> str | None:
+def _generate_transformers(user_text: str, system: str) -> str | None:
     pipe = _load_transformers()
     if pipe is None:
         return None
     try:
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT.format(urgency=urgency)},
+            {"role": "system", "content": system},
             {"role": "user", "content": user_text},
         ]
         prompt = pipe.tokenizer.apply_chat_template(
@@ -110,12 +124,12 @@ def _load_llamacpp():
         return None
 
 
-def _generate_llamacpp(user_text: str, urgency: str) -> str | None:
+def _generate_llamacpp(user_text: str, system: str) -> str | None:
     model = _load_llamacpp()
     if model is None:
         return None
     try:
-        prompt = SYSTEM_PROMPT.format(urgency=urgency) + f"\n\nSymptoms: {user_text}\n\nGuidance:"
+        prompt = system + f"\n\nSymptoms: {user_text}\n\nGuidance:"
         out = model(prompt, max_tokens=256, temperature=0.3, stop=["\n\n"])
         return out["choices"][0]["text"].strip() or None
     except Exception:
@@ -164,11 +178,13 @@ def warm() -> bool:
     """
     if settings.llm_backend.strip().lower() != "hf_api" or not settings.hf_token:
         return False
-    return _generate_hf_api("mild cold symptoms", "self_care") is not None
+    return _generate_hf_api(
+        "mild cold symptoms", SYSTEM_PROMPT.format(urgency="self_care")
+    ) is not None
 
 
-def _generate_hf_api(user_text: str, urgency: str) -> str | None:
-    """Run OpenBioLLM on Hugging Face's servers. Requires HF_TOKEN; no local download.
+def _hf_generate(prompt: str, max_tokens: int = 320) -> str | None:
+    """Run a fully-built prompt through OpenBioLLM on HF. Requires HF_TOKEN.
 
     The free Featherless provider intermittently returns 503 (cold-start/overload),
     so we retry a couple of times with a short backoff before falling back to rules.
@@ -181,14 +197,12 @@ def _generate_hf_api(user_text: str, urgency: str) -> str | None:
         return None
 
     client = InferenceClient(provider=settings.hf_provider or None, api_key=settings.hf_token)
-    prompt = _LLAMA3_TEMPLATE.format(system=SYSTEM_PROMPT.format(urgency=urgency), user=user_text)
-
     for attempt in range(_MAX_ATTEMPTS):
         try:
             text = client.text_generation(
                 prompt,
                 model=settings.llm_model_id,
-                max_new_tokens=256,
+                max_new_tokens=max_tokens,
                 temperature=0.3,
                 stop=["<|eot_id|>"],
             )
@@ -202,14 +216,41 @@ def _generate_hf_api(user_text: str, urgency: str) -> str | None:
     return None
 
 
-def _run_model(user_text: str, urgency: str) -> str | None:
+def _llama3_multiturn(system: str, turns: list[tuple[str, str]], final_user: str) -> str:
+    """Build a multi-turn Llama-3 instruct prompt from prior (role, content) turns."""
+    parts = [f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system}<|eot_id|>"]
+    for role, content in turns:
+        r = "assistant" if role == "assistant" else "user"
+        parts.append(f"<|start_header_id|>{r}<|end_header_id|>\n\n{content}<|eot_id|>")
+    parts.append(f"<|start_header_id|>user<|end_header_id|>\n\n{final_user}<|eot_id|>")
+    parts.append("<|start_header_id|>assistant<|end_header_id|>\n\n")
+    return "".join(parts)
+
+
+def _generate_hf_api(user_text: str, system: str) -> str | None:
+    return _hf_generate(_LLAMA3_TEMPLATE.format(system=system, user=user_text))
+
+
+def next_question(history: list[dict], message: str) -> str | None:
+    """Ask OpenBioLLM for the single best next clarifying question given the chat.
+
+    Returns None if no hosted model is available (caller uses a fixed question).
+    Only supported on the hosted (hf_api) backend; other backends fall back."""
+    if settings.llm_backend.strip().lower() != "hf_api" or not settings.hf_token:
+        return None
+    turns = [(t.get("role", "user"), t.get("content", "")) for t in history if t.get("content")]
+    prompt = _llama3_multiturn(NEXT_QUESTION_SYSTEM_PROMPT, turns, message)
+    return _hf_generate(prompt, max_tokens=80)
+
+
+def _run_model(user_text: str, system: str) -> str | None:
     backend = settings.llm_backend.strip().lower()
     if backend == "hf_api":
-        return _generate_hf_api(user_text, urgency)
+        return _generate_hf_api(user_text, system)
     if backend == "transformers":
-        return _generate_transformers(user_text, urgency)
+        return _generate_transformers(user_text, system)
     if backend == "llamacpp":
-        return _generate_llamacpp(user_text, urgency)
+        return _generate_llamacpp(user_text, system)
     return None  # stub: no model configured
 
 
@@ -226,7 +267,7 @@ def generate_guidance(
     if result.urgency == triage_engine.EMERGENCY:
         return result
 
-    reply = _run_model(symptom_text, result.urgency)
+    reply = _run_model(symptom_text, SYSTEM_PROMPT.format(urgency=result.urgency))
     if reply:
         result.guidance = reply       # model may reword the guidance…
         result.source = "llm"         # …but the urgency + red flags stay rule-based.

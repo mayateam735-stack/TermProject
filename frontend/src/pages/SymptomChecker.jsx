@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Flame, Mic, Send } from "lucide-react";
 import { api } from "../api.js";
+import SelfCareTips from "../components/SelfCareTips.jsx";
 
 const QUICK = ["Fever", "Cough", "Headache", "Nausea", "Fatigue", "Dizziness"];
 const DURATIONS = ["Today", "1–2 days", "3–6 days", "A week or more"];
@@ -174,6 +175,9 @@ export default function SymptomChecker() {
             <p className="muted"><strong>Why:</strong> {result.red_flags.join(", ")}</p>
           )}
           <p style={{ color: "var(--ink)", fontWeight: 600 }}>→ {result.recommended_action}</p>
+          {result.self_care_tips?.length > 0 && (
+            <SelfCareTips tips={result.self_care_tips} url={result.remedy_search_url} />
+          )}
           <p className="muted" style={{ fontSize: "0.78rem" }}>🧠 {SOURCE_LABELS[result.source] ?? result.source}</p>
           <p className="disclaimer">{result.disclaimer}</p>
         </div>

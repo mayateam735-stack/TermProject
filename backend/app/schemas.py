@@ -15,8 +15,14 @@ class TriageRequest(BaseModel):
     duration: str | None = Field(default=None, max_length=40)
 
 
+class ChatTurn(BaseModel):
+    role: str = Field(pattern=r"^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
 
 
 class ChatResponse(BaseModel):
@@ -24,6 +30,8 @@ class ChatResponse(BaseModel):
     urgency: str | None  # set when the message was triaged; None for small talk
     disclaimer: str
     source: str
+    self_care_tips: list[str] = []      # OTC/home suggestions — only for self_care
+    remedy_search_url: str | None = None
 
 
 class TriageResponse(BaseModel):
@@ -34,6 +42,8 @@ class TriageResponse(BaseModel):
     recommended_action: str
     disclaimer: str
     source: str  # "rule-based" | "llm" — transparency about how guidance was produced
+    self_care_tips: list[str] = []      # OTC/home suggestions — only for self_care
+    remedy_search_url: str | None = None
 
 
 # ---- Auth / Profile --------------------------------------------------------

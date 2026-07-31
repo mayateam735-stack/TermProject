@@ -10,6 +10,8 @@ concern raised in the symptom-checker literature (Wallace et al., 2022).
 """
 from __future__ import annotations
 
+import re
+import urllib.parse
 from dataclasses import dataclass, field
 
 # Urgency levels, ordered from least to most severe (higher rank = more urgent).
@@ -60,6 +62,52 @@ SELF_CARE_RULES: dict[str, tuple[str, ...]] = {
     "mild fever": ("mild fever", "slight fever"),
 }
 
+# Over-the-counter / home-care suggestions, shown ONLY for a self_care result.
+# General drugstore options — not prescriptions or dosing. The UI pairs these
+# with a "read the label / ask your pharmacist" note.
+SELF_CARE_REMEDIES: dict[str, list[str]] = {
+    "cold symptoms": [
+        "Rest and drink plenty of warm fluids",
+        "Saline nasal spray or a decongestant for a stuffy nose",
+        "Throat lozenges, or warm water with honey and lemon for a sore throat",
+        "An over-the-counter cough syrup (e.g. dextromethorphan) can ease a bothersome cough",
+    ],
+    "mild headache": [
+        "Rest, hydrate, and cut down on screen time",
+        "An OTC pain reliever such as acetaminophen (Tylenol) or ibuprofen (Advil)",
+        "A cool compress on the forehead can help",
+    ],
+    "nausea": [
+        "Sip clear fluids slowly; ginger tea or ginger candies can settle the stomach",
+        "Eat small, bland foods (crackers, toast, rice)",
+        "An OTC antacid may help if it feels like indigestion",
+    ],
+    "tiredness": [
+        "Prioritize rest and gentle stretching",
+        "Stay hydrated; an OTC pain reliever can ease muscle aches",
+    ],
+    "mild fever": [
+        "Rest and drink plenty of fluids",
+        "Acetaminophen or ibuprofen can help bring a fever down",
+        "Dress lightly and keep your room cool",
+    ],
+}
+
+_GENERIC_REMEDIES = [
+    "Rest and stay well hydrated",
+    "An OTC pain/fever reliever (acetaminophen or ibuprofen) can ease aches or fever",
+    "Ask your pharmacist to recommend an over-the-counter option for your symptoms",
+]
+
+
+def remedy_search_url(symptom_text: str) -> str:
+    """A Google search for home/OTC remedies for what the user described."""
+    q = urllib.parse.quote_plus(
+        f"home remedies and over-the-counter treatment for {symptom_text.strip()}"
+    )
+    return f"https://www.google.com/search?q={q}"
+
+
 # Pain thresholds (0–10 self-reported scale).
 PAIN_SEVERE = 8   # 8–10 -> at least urgent
 PAIN_MODERATE = 5  # 5–7  -> at least routine
@@ -99,11 +147,56 @@ class TriageResult:
     red_flags: list[str] = field(default_factory=list)  # reasons that drove the result
     recommended_action: str = ""
     source: str = "rule-based"
+    # Populated ONLY for self_care — never for routine/urgent/emergency.
+    self_care_tips: list[str] = field(default_factory=list)
+    remedy_search_url: str | None = None
+
+
+def _norm(s: str) -> str:
+    """Lowercase and drop apostrophes so 'cant breathe' matches \"can't breathe\".
+
+    Missing apostrophes are extremely common in typed input; without this a
+    red flag like \"can't breathe\" would silently fail to match — a safety bug.
+    """
+    return re.sub(r"[’'`]", "", s.lower())
 
 
 def _match(text: str, rules: dict[str, tuple[str, ...]]) -> list[str]:
-    """Return the rule labels whose keywords appear in `text`."""
-    return [label for label, kws in rules.items() if any(kw in text for kw in kws)]
+    """Return the rule labels whose keywords appear in `text` (apostrophe-insensitive)."""
+    t = _norm(text)
+    return [label for label, kws in rules.items() if any(_norm(kw) in t for kw in kws)]
+
+
+# "I feel unwell" style phrases that state illness without naming a symptom.
+VAGUE_PHRASES: tuple[str, ...] = (
+    "sick", "unwell", "not feeling well", "not feeling good", "dont feel well",
+    "dont feel good", "i am ill", "im ill", "feeling off", "under the weather",
+    "not myself", "something is wrong", "somethings wrong", "not well", "not right",
+    "out of sorts", "run down", "rundown",
+)
+# "feel [a bit/really/so] bad/awful/…" — catches intensifiers between the words.
+_VAGUE_RE = re.compile(
+    r"\bfeel(?:ing)?\b(?:\s+\w+){0,2}\s+"
+    r"(bad|sick|unwell|ill|awful|terrible|horrible|rough|lousy|crappy|gross|"
+    r"weird|funny|strange|off|poorly|nauseous)\b"
+)
+
+
+def is_vague_illness(symptom_text: str) -> bool:
+    """True when the user says they feel unwell but names no concrete symptom.
+
+    Used to ask clarifying questions instead of triaging thin air. Returns False
+    the moment any red-flag / urgent / self-care keyword is present, so a message
+    like "I feel sick and can't breathe" still goes straight to triage.
+    """
+    text = _norm(symptom_text)
+    if not (_VAGUE_RE.search(text) or any(p in text for p in VAGUE_PHRASES)):
+        return False
+    return not (
+        _match(symptom_text, RED_FLAG_RULES)
+        or _match(symptom_text, URGENT_RULES)
+        or _match(symptom_text, SELF_CARE_RULES)
+    )
 
 
 def _is_prolonged(duration: str | None) -> bool:
@@ -174,10 +267,26 @@ def assess(
 
     urgency = BY_RANK[rank]
     headline, guidance, action = BAND_COPY[urgency]
+
+    # Attach OTC/home-care suggestions only when the result is self_care.
+    tips: list[str] = []
+    search_url: str | None = None
+    if urgency == SELF_CARE:
+        seen: set[str] = set()
+        for label in self_care_hits:
+            for tip in SELF_CARE_REMEDIES.get(label, []):
+                if tip not in seen:
+                    seen.add(tip)
+                    tips.append(tip)
+        tips = (tips or list(_GENERIC_REMEDIES))[:5]
+        search_url = remedy_search_url(symptom_text)
+
     return TriageResult(
         urgency=urgency,
         headline=headline,
         guidance=guidance,
         red_flags=reasons,
         recommended_action=action,
+        self_care_tips=tips,
+        remedy_search_url=search_url,
     )

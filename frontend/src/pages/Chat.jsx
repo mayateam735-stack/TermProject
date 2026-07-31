@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bot, Send } from "lucide-react";
 import { api } from "../api.js";
 import { SOURCE_LABELS } from "./SymptomChecker.jsx";
+import SelfCareTips from "../components/SelfCareTips.jsx";
 
 const INTRO = {
   role: "assistant",
@@ -41,12 +42,20 @@ export default function Chat() {
   async function sendMessage(text) {
     const msg = (text ?? "").trim();
     if (!msg || busy) return;
+    // Prior turns become conversation context so the AI can ask follow-ups
+    // one at a time. Drop the canned intro and any error bubbles.
+    const history = messages
+      .filter((m) => !m.error && m.text !== INTRO.text)
+      .map((m) => ({ role: m.role, content: m.text }));
     setMessages((m) => [...m, { role: "user", text: msg }]);
     setInput("");
     setBusy(true);
     try {
-      const res = await api.chat(msg);
-      setMessages((m) => [...m, { role: "assistant", text: res.reply, urgency: res.urgency, source: res.source }]);
+      const res = await api.chat(msg, history);
+      setMessages((m) => [...m, {
+        role: "assistant", text: res.reply, urgency: res.urgency, source: res.source,
+        tips: res.self_care_tips, url: res.remedy_search_url,
+      }]);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", text: `Sorry — ${err.message}`, error: true }]);
     } finally {
@@ -83,6 +92,9 @@ export default function Chat() {
             </div>
             {m.role === "assistant" && m.source && (
               <span className="bubble-source">🧠 {SOURCE_LABELS[m.source] ?? m.source}</span>
+            )}
+            {m.role === "assistant" && m.tips?.length > 0 && (
+              <SelfCareTips tips={m.tips} url={m.url} />
             )}
           </div>
         ))}

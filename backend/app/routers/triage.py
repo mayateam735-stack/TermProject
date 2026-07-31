@@ -42,4 +42,6 @@ def triage(
         recommended_action=result.recommended_action,
         disclaimer=DISCLAIMER,
         source=result.source,
+        self_care_tips=result.self_care_tips,
+        remedy_search_url=result.remedy_search_url,
     )

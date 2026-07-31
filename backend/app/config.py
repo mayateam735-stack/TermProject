@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     hf_provider: str = "featherless-ai"
     # Web Push (VAPID) contact — required by push services in the JWT "sub" claim.
     vapid_subject: str = "mailto:healthnav@example.com"
+    # VAPID keypair. Leave blank locally (auto-generated + cached to disk). In
+    # production SET BOTH so the keys survive redeploys — otherwise a fresh pair
+    # is generated each deploy and every existing push subscription breaks.
+    # Private key is a PKCS8 PEM; newlines may be written as literal "\n".
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
     # Periodically ping the hosted LLM to keep it warm. OFF by default — on a free
     # HF account this burns the limited monthly inference credit. Enable only with billing.
     llm_keep_warm: bool = False
