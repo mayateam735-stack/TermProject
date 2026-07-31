@@ -32,9 +32,14 @@ A three-tier system, mirroring the proposal:
   color-coded, filterable markers ([`ClinicMap.jsx`](frontend/src/components/ClinicMap.jsx)).
   Clicking a clinic in the list pans/zooms the map to it and opens its info
   window. Falls back to the seeded clinic list if the feed is unreachable.
-- **Medication reminders** (create / list / delete / skip), with a per-dose
-  taken/skipped log and weekly **adherence tracking** — daily and time-of-day
-  breakdowns, weekday vs. weekend averages
+- **Medication reminders** (create / list / delete / skip) with a
+  configurable `start_date` — "ongoing daily from a chosen day," not just
+  "since created." That start date is threaded through everywhere adherence
+  gets computed: weekly **adherence tracking** (daily and time-of-day
+  breakdowns, weekday vs. weekend averages), a **current/best streak**
+  stat (`GET /api/reminders/streak`), per-reminder lifetime detail, the
+  doctor-facing medications view, and the due-dose push scheduler — so a
+  reminder that starts next week doesn't count as "missed" today
   ([`reminders.py`](backend/app/routers/reminders.py)).
 - **Web Push reminders** — a background scheduler ([`scheduler.py`](backend/app/services/scheduler.py))
   checks every minute for due doses and sends a browser push (via
@@ -57,8 +62,36 @@ A three-tier system, mirroring the proposal:
   engine is a permanent safety floor the model can never downgrade
   (emergencies always bypass the model). Local backends (`transformers`,
   `llamacpp`) are also supported for offline/GPU setups.
-- **Doctor dashboard** — doctors can view their assigned patients and
-  symptom-check history ([`doctor.py`](backend/app/routers/doctor.py)).
+- **Doctor triage-priority inbox** — a doctor's patient list is sorted by
+  clinical urgency first (emergency → urgent → routine → self-care), then
+  recency, so whoever needs attention most surfaces at the top; each patient
+  shows 30-day medication adherence and a `needs_attention` flag. Drilling
+  into a patient shows their full symptom-check history plus a
+  **medications view** with lifetime adherence per prescription
+  ([`doctor.py`](backend/app/routers/doctor.py),
+  [`DoctorDashboard.jsx`](frontend/src/pages/DoctorDashboard.jsx)).
+- **Admin dashboard** — population-level analytics (signups, symptom checks
+  by urgency, medication adherence, top medications, common symptom words,
+  total logins/app-opens) rendered as [Recharts](https://recharts.org)
+  charts, including a 30-day signups/checks/doses time series
+  (`GET /api/admin/timeseries`), plus full CRUD over any user account
+  ([`admin.py`](backend/app/routers/admin.py),
+  [`AdminDashboard.jsx`](frontend/src/pages/AdminDashboard.jsx)). Admins
+  can't self-register — see [Creating an admin](#creating-an-admin) below.
+- **Engagement tracking** — every login and app open increments
+  `login_count` / `app_opens` on the patient record, rolled up into the
+  admin analytics above.
+- **Installable PWA** — an enriched manifest (`id`, `scope`, `shortcuts` for
+  Symptoms/Chat/Meds, maskable icon; see `frontend/vite.config.js`) plus an
+  in-app **Install** banner that
+  captures the browser's `beforeinstallprompt` event (which fires before
+  React mounts, so it's stashed at module load — see
+  [`pwa.js`](frontend/src/pwa.js)) and shows a native install button, or an
+  "Add to Home Screen" hint on iOS Safari where no native prompt exists
+  ([`InstallBanner.jsx`](frontend/src/components/InstallBanner.jsx)).
+- **Toast notifications** — a lightweight in-app toast system
+  (success/error/info) for action feedback across the app
+  ([`toast.jsx`](frontend/src/toast.jsx)).
 
 ## Running it
 
@@ -89,7 +122,13 @@ local SQLite file (`vhn.db`) — handy for quick experiments.
 > (`backend/app/models.py`) and an old table is already sitting in your
 > database (local or Neon), you'll get `UndefinedColumn` / 500 errors until
 > you either `ALTER TABLE` to add the column manually or drop and recreate
-> the table.
+> the table. This has bitten us for real: after pulling model changes that
+> added `login_count` / `last_login` / `app_opens` to `Patient`, login
+> against the shared Neon database started 500ing for every existing
+> account (schema drift, not bad credentials) until those columns were
+> added by hand. If auth/signup suddenly breaks after a pull, diff the
+> live table's columns against `models.py` before assuming it's a
+> credentials or connectivity problem.
 
 #### Enabling OpenBioLLM
 By default (`LLM_BACKEND=` empty) the app runs on the rule-based triage engine
@@ -102,6 +141,19 @@ Check `GET /api/ai/status` to confirm which engine is active. The hosted
 Featherless provider can return a cold-start `503` on the first request; the
 app retries a few times before falling back to the rule engine, so guidance
 always comes back either way.
+
+#### Creating an admin
+Admin accounts can't self-register — sign up normally first (as `patient`,
+the signup default; the role gets overwritten either way), then promote
+that account from the backend:
+```bash
+cd backend
+python -m app.make_admin someone@example.com
+```
+This works against whichever database `backend/.env`'s `DATABASE_URL`
+points to — if that's the same Neon database your deployed app uses, an
+account created through the deployed site can be promoted this way too.
+Once promoted, log in as that user to reach `/admin`.
 
 #### Web Push reminders
 No setup needed — a VAPID keypair is generated automatically on first run and
@@ -117,6 +169,13 @@ copy .env.example .env          # macOS/Linux: cp .env.example .env — add your
 npm run dev                     # http://localhost:5173
 ```
 The dev server proxies `/api/*` to the backend on port 8000.
+
+> ⚠️ This is a PWA with a service worker (`vite-plugin-pwa`,
+> `registerType: "autoUpdate"`). If a fix or deploy doesn't seem to take
+> effect — stale-looking UI, requests that appear to silently no-op — try
+> an incognito/private window first before assuming the backend is broken.
+> To clear it in your regular browser: DevTools → Application → Service
+> Workers → Unregister, then hard refresh.
 
 #### Clinic map (Google Maps)
 The Nearby care page's map needs a Google Maps JavaScript API key in
@@ -174,6 +233,7 @@ repo root and produces one deployable service.
 | PATCH | `/api/reminders/{id}/taken` | Mark a dose taken today |
 | PATCH | `/api/reminders/{id}/skip` | Mark a dose skipped today |
 | GET | `/api/reminders/adherence` | Weekly adherence stats (`?week_offset=`) |
+| GET | `/api/reminders/streak` | Current/best consecutive-day adherence streak |
 | GET | `/api/reminders/{id}` | Reminder detail + lifetime adherence |
 | GET | `/api/medications/search` | Medication name autocomplete (NLM RxTerms) |
 | GET | `/api/medications/info` | Drug label info (openFDA) |
@@ -186,9 +246,14 @@ repo root and produces one deployable service.
 | GET/PATCH | `/api/patients/me` | View / update profile |
 | GET | `/api/patients/me/history` | Full symptom-check history |
 | GET | `/api/doctors` | List doctors patients can choose from |
-| GET | `/api/doctor/patients` | Doctor's assigned patients |
+| GET | `/api/doctor/patients` | Doctor's assigned patients, sorted by triage priority |
 | GET | `/api/doctor/patients/{id}` | A specific patient's profile (doctor view) |
+| GET | `/api/doctor/patients/{id}/medications` | A specific patient's medications + lifetime adherence |
 | GET | `/api/doctor/patients/{id}/history` | A specific patient's symptom-check history |
+| GET | `/api/admin/stats` | Population-level analytics (admin only) |
+| GET | `/api/admin/timeseries` | Daily signups/checks/doses over N days (admin only) |
+| GET | `/api/admin/users` | List all users with usage counts (admin only) |
+| GET/PATCH/DELETE | `/api/admin/users/{id}` | View, edit, or delete any user (admin only) |
 | GET | `/api/ai/status` | Which AI engine (rule-based or OpenBioLLM) is currently active |
 | GET | `/api/health` | Health check |
 

@@ -47,6 +47,11 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true }); // returning users log back in, not sign up again
+  };
+
   if (loading) return <Splash />;
 
   // Logged out — only the auth screens are reachable; default to Sign Up.
@@ -76,7 +81,7 @@ export default function App() {
             <button className="bell" onClick={toggleTheme} aria-label="Toggle dark mode">
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+            <button className="bell" onClick={handleLogout} aria-label="Sign out" title="Sign out">
               <LogOut size={18} />
             </button>
           </div>
@@ -111,7 +116,7 @@ export default function App() {
             <button className="bell" onClick={toggleTheme} aria-label="Toggle dark mode">
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+            <button className="bell" onClick={handleLogout} aria-label="Sign out" title="Sign out">
               <LogOut size={18} />
             </button>
           </div>
@@ -143,7 +148,7 @@ export default function App() {
             title={theme === "dark" ? "Switch to light" : "Switch to dark"}>
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button className="bell" onClick={logout} aria-label="Sign out" title="Sign out">
+          <button className="bell" onClick={handleLogout} aria-label="Sign out" title="Sign out">
             <LogOut size={18} />
           </button>
         </div>
