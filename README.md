@@ -25,13 +25,18 @@ A three-tier system, mirroring the proposal:
 - **Account creation, login, and session auth** — cookie-based sessions backed
   by hashed passwords ([`auth.py`](backend/app/routers/auth.py)).
 - **Symptom checker + "Should I go to the ER?" flow** — safety-first triage that
-  always errs toward caution ([`triage_engine.py`](backend/app/services/triage_engine.py)).
+  always errs toward caution. Red-flag matching is apostrophe-insensitive
+  ("cant breathe" matches the same rule as "can't breathe") so a missing
+  apostrophe in typed input can't silently skip an emergency
+  ([`triage_engine.py`](backend/app/services/triage_engine.py)).
 - **Clinic / pharmacy locator** with live ED/urgent-care wait times from
   [edwaittimes.ca](https://edwaittimes.ca) ([`wait_times.py`](backend/app/services/wait_times.py)),
-  distance sorting from the user's geolocation, and a Google Maps view with
-  color-coded, filterable markers ([`ClinicMap.jsx`](frontend/src/components/ClinicMap.jsx)).
-  Clicking a clinic in the list pans/zooms the map to it and opens its info
-  window. Falls back to the seeded clinic list if the feed is unreachable.
+  distance sorting from the user's geolocation, and a free
+  [Leaflet](https://leafletjs.com) + OpenStreetMap view with color-coded,
+  filterable markers — no API key or billing account needed
+  ([`ClinicMap.jsx`](frontend/src/components/ClinicMap.jsx)). Clicking a
+  clinic in the list pans/zooms the map to it and opens its popup. Falls
+  back to the seeded clinic list if the feed is unreachable.
 - **Medication reminders** (create / list / delete / skip) with a
   configurable `start_date` — "ongoing daily from a chosen day," not just
   "since created." That start date is threaded through everywhere adherence
@@ -42,9 +47,13 @@ A three-tier system, mirroring the proposal:
   reminder that starts next week doesn't count as "missed" today
   ([`reminders.py`](backend/app/routers/reminders.py)).
 - **Web Push reminders** — a background scheduler ([`scheduler.py`](backend/app/services/scheduler.py))
-  checks every minute for due doses and sends a browser push (via
+  checks every minute for due doses (with a 10-minute grace window in case a
+  tick is missed, and a same-day dedupe guard so grace doesn't turn into
+  spam) and sends a browser push (via
   [`push.py`](backend/app/services/push.py) / [`pywebpush`](https://pypi.org/project/pywebpush/))
-  with Take/Skip actions. VAPID keys are generated automatically on first run.
+  with Take/Skip actions. VAPID keys are auto-generated for local dev; see
+  [Web Push reminders](#web-push-reminders) below for making them persist
+  in production.
 - **Medication autocomplete + label info** — name search backed by the NLM
   RxTerms API and drug info from openFDA, proxied server-side
   ([`medications.py`](backend/app/routers/medications.py)).
@@ -53,9 +62,20 @@ A three-tier system, mirroring the proposal:
   ([`insurance.py`](backend/app/routers/insurance.py)). Illustrative sample
   plans, not real quotes.
 - **Private health history** — every symptom check is persisted per patient.
-- **Health AI chat** — conversational front-end over the same safety-bounded
-  triage logic; small talk gets a friendly reply, symptom descriptions get
-  guidance ([`chat.py`](backend/app/routers/chat.py)).
+- **Conversational, multi-turn Health AI chat** — small talk gets a friendly
+  reply; a vague message ("I feel unwell") gets ONE clarifying question at a
+  time (OpenBioLLM phrases it when configured, with a fixed fallback
+  sequence otherwise) until a concrete symptom emerges, then hands off to
+  triage guidance. Red flags are scanned across the **whole conversation**,
+  not just the latest message, so "I feel sick" → *(a turn later)* → "and
+  now I can't breathe" still forces an immediate `EMERGENCY` reply — the
+  same rule-based floor as the symptom checker, never the model
+  ([`chat.py`](backend/app/routers/chat.py)).
+- **Self-care remedies** — a `self_care` result (checker or chat) includes a
+  short list of OTC/home-care suggestions plus a "search remedies for your
+  symptoms" link; guaranteed empty for routine/urgent/emergency results
+  ([`triage_engine.py`](backend/app/services/triage_engine.py),
+  [`SelfCareTips.jsx`](frontend/src/components/SelfCareTips.jsx)).
 - **OpenBioLLM-8B** wired up via Hugging Face's hosted Inference API
   ([`llm.py`](backend/app/services/llm.py), `LLM_BACKEND=hf_api`) — the model
   rewords self-care guidance in plain language, but the rule-based triage
@@ -118,17 +138,17 @@ load the sample clinics. Without a `DATABASE_URL`, the app falls back to a
 local SQLite file (`vhn.db`) — handy for quick experiments.
 
 > ⚠️ `create_all` only creates **missing tables** — it never adds columns to
-> a table that already exists. If you add a field to a model
-> (`backend/app/models.py`) and an old table is already sitting in your
-> database (local or Neon), you'll get `UndefinedColumn` / 500 errors until
-> you either `ALTER TABLE` to add the column manually or drop and recreate
-> the table. This has bitten us for real: after pulling model changes that
-> added `login_count` / `last_login` / `app_opens` to `Patient`, login
-> against the shared Neon database started 500ing for every existing
-> account (schema drift, not bad credentials) until those columns were
-> added by hand. If auth/signup suddenly breaks after a pull, diff the
-> live table's columns against `models.py` before assuming it's a
-> credentials or connectivity problem.
+> a table that already exists. This bit us for real: after pulling model
+> changes that added `login_count` / `last_login` / `app_opens` to
+> `Patient`, login against the shared Neon database started 500ing for
+> every existing account (schema drift, not bad credentials). Startup now
+> runs [`migrate.py`](backend/app/services/migrate.py) right after
+> `create_all`, which diffs each model against the live table and issues an
+> `ALTER TABLE ... ADD COLUMN` for anything missing — so a new *column* on
+> an existing table is handled automatically on the next restart/deploy. It
+> deliberately does **not** drop, rename, or retype columns (and skips a
+> `NOT NULL` column with no default on a populated table, logging why) —
+> those still need a manual fix.
 
 #### Enabling OpenBioLLM
 By default (`LLM_BACKEND=` empty) the app runs on the rule-based triage engine
@@ -156,19 +176,30 @@ account created through the deployed site can be promoted this way too.
 Once promoted, log in as that user to reach `/admin`.
 
 #### Web Push reminders
-No setup needed — a VAPID keypair is generated automatically on first run and
-stored as `backend/vapid_private.pem` / `vapid_public.txt` (git-ignored). A
-background scheduler checks every minute for reminders due "now" (per device
-timezone) and pushes a notification with Take/Skip actions.
+No setup needed for local dev — a VAPID keypair is generated on first run,
+cached to `backend/vapid_private.pem` / `vapid_public.txt` (git-ignored), and
+the values to promote are printed to the console. A background scheduler
+checks every minute for reminders due "now" (per device timezone) and pushes
+a notification with Take/Skip actions.
+
+**In production**, set both env vars so the keypair survives redeploys —
+otherwise every redeploy generates a fresh pair and every existing push
+subscription silently breaks:
+```
+VAPID_PUBLIC_KEY=<printed to the console on first local run>
+VAPID_PRIVATE_KEY=<same — a PKCS8 PEM, newlines written as literal \n>
+```
 
 ### 2. Frontend (React PWA)
 ```bash
 cd frontend
 npm install
-copy .env.example .env          # macOS/Linux: cp .env.example .env — add your Google Maps key
 npm run dev                     # http://localhost:5173
 ```
-The dev server proxies `/api/*` to the backend on port 8000.
+The dev server proxies `/api/*` to the backend on port 8000. No `.env` setup
+needed — the clinic map uses free Leaflet + OpenStreetMap tiles, no API key
+or billing account required. `frontend/.env.example` is kept as a
+placeholder for any future `VITE_*` vars.
 
 > ⚠️ This is a PWA with a service worker (`vite-plugin-pwa`,
 > `registerType: "autoUpdate"`). If a fix or deploy doesn't seem to take
@@ -176,20 +207,6 @@ The dev server proxies `/api/*` to the backend on port 8000.
 > an incognito/private window first before assuming the backend is broken.
 > To clear it in your regular browser: DevTools → Application → Service
 > Workers → Unregister, then hard refresh.
-
-#### Clinic map (Google Maps)
-The Nearby care page's map needs a Google Maps JavaScript API key in
-`frontend/.env`:
-```
-VITE_GOOGLE_MAPS_API_KEY=<your key>
-```
-In the [Google Cloud Console](https://console.cloud.google.com/): enable the
-**Maps JavaScript API** for the project, attach a billing account (required
-even for free-tier usage), and on the key's own page check that under **API
-restrictions** "Maps JavaScript API" is allowed (a key restricted to a
-different API, e.g. Geocoding, will fail with `ApiTargetBlockedMapError`
-even though the API itself is enabled project-wide). Without a key set, the
-locator still works — the map card just shows a "Map unavailable" message.
 
 ## Deploying (Railway)
 
@@ -212,7 +229,7 @@ Set these environment variables on the Railway service:
 | --- | --- |
 | `DATABASE_URL` | A Railway Postgres plugin connection string — the local disk isn't persisted across deploys, so SQLite will lose data on every redeploy. |
 | `COOKIE_SECURE` | `true` — Railway serves over HTTPS. |
-| `VITE_GOOGLE_MAPS_API_KEY` | Same key as local dev, restricted by HTTP referrer to the Railway domain. Baked in at build time by Vite. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | So the Web Push keypair survives redeploys — see [Web Push reminders](#web-push-reminders). Without these, every redeploy breaks existing push subscriptions. |
 | `CORS_ORIGINS` | Optional now that frontend and backend share an origin. |
 
 No "Root Directory" dashboard setting is needed — the build runs from the
