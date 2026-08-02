@@ -2,6 +2,8 @@
 
 CSIS 4495 – 071 Group Project · Team **MAYA** (Amish Nanda, Lovepreet Singh, Shinsuke Tomita)
 
+**Live demo:** <https://termproject-production-b7d3.up.railway.app/home>
+
 A cross-platform mobile health-guidance app. Users describe symptoms in plain
 language and get clear direction on the appropriate level of care — **guidance,
 not diagnosis**. Any result warranting clinical attention routes the user toward
